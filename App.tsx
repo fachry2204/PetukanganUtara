@@ -204,9 +204,9 @@ const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(() => loadData('app_session', null)); 
 
   const [settings, setSettings] = useState<SystemSettings>(() => loadData('app_settings', {
-    systemName: 'SIPATU GROSEL',
-    subName: 'Kelurahan Grogol Selatan',
-    footerText: '\u00A9 2026 Kelurahan Grogol Selatan. All Rights Reserved.',
+    systemName: 'SiPetut',
+    subName: 'Kelurahan Petukangan Utara',
+    footerText: '\u00A9 2026 Kelurahan Petukangan Utara. All Rights Reserved.',
     appVersion: '1.0.0',
     themeColor: '#f97316',
     logo: 'https://upload.wikimedia.org/wikipedia/commons/e/eb/Coat_of_arms_of_Jakarta.svg',

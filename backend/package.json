@@ -1,8 +1,8 @@
 
 {
-  "name": "sipatu-grosel-backend",
+  "name": "sipetut-backend",
   "version": "1.0.0",
-  "description": "Backend API untuk Sistem Informasi Terpadu Kelurahan Grogol Selatan",
+  "description": "Backend API untuk Sistem Informasi Terpadu Kelurahan Petukangan Utara",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
