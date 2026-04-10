@@ -1,14 +1,15 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Camera, MapPin, RefreshCw, CheckCircle2, AlertTriangle, User } from 'lucide-react';
-import { User as UserType } from '../types';
+import { User as UserType, AttendanceRecord, AttendanceType } from '../types';
 import LocationMiniMap from './LocationMiniMap';
 
 interface AttendanceSectionProps {
   user: UserType;
+  onRecord?: (record: AttendanceRecord) => void;
 }
 
-const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user }) => {
+const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user, onRecord }) => {
   const [step, setStep] = useState<'idle' | 'locating' | 'verify_location' | 'camera' | 'success'>('idle');
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [photo, setPhoto] = useState<string | null>(null);
@@ -183,6 +184,22 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user }) => {
             }
         }
         if (attendanceType === 'Absen Pulang') setHasCheckedOut(true);
+
+        // Notify parent of the new record
+        if (onRecord) {
+            onRecord({
+                id: Date.now().toString(),
+                userId: user.id || 'unknown',
+                userNik: user.nik || 'unknown',
+                userName: user.name || user.username || 'unknown',
+                type: attendanceType,
+                timestamp: timeToPrint.toISOString(),
+                latitude: location.lat,
+                longitude: location.lng,
+                address: address,
+                photo: imageSrc
+            });
+        }
 
         // Stop stream
         if (stream) {

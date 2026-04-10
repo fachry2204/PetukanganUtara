@@ -45,9 +45,11 @@ import {
   Star,
   Power,
   CheckCircle2,
-  AlertTriangle
+  AlertTriangle,
+  ListTodo,
+  Megaphone
 } from 'lucide-react';
-import { User, SystemSettings, Report, Staff, Citizen, ServiceRequest, Role, ServiceRating } from './types';
+import { User, SystemSettings, Report, Staff, Citizen, ServiceRequest, Role, ServiceRating, Announcement, AttendanceRecord, AttendanceType } from './types';
 import { MOCK_USERS, MOCK_REPORTS, MOCK_STAFF, MOCK_CITIZENS, MOCK_SERVICE_REQUESTS } from './constants';
 import PPSUSection from './components/PPSUSection';
 import DutySection from './components/DutySection';
@@ -64,6 +66,8 @@ import WargaMainDashboard from './components/WargaMainDashboard';
 import LoginPage from './components/LoginPage';
 import PPSUTaskInputSection from './components/PPSUTaskInputSection';
 import PPSUMyReportsSection from './components/PPSUMyReportsSection';
+import AnnouncementSection from './components/AnnouncementSection';
+import AdminReportsSection from './components/AdminReportsSection';
 
 // Updated Submenu Types
 type Submenu = string;
@@ -87,7 +91,20 @@ const saveData = (key: string, data: any) => {
 };
 
 // Component for Staff Dashboard with Profile and All Stats
-const StaffDashboardSection: React.FC<{ user: User, citizens: Citizen[], staff: Staff[], reports: Report[], services: ServiceRequest[] }> = ({ user, citizens, staff, reports, services }) => {
+const StaffDashboardSection: React.FC<{ 
+  user: User, 
+  staff: Staff[], 
+  reports: Report[], 
+  announcements: Announcement[],
+  sosAlerts: any[],
+  onResolveSos: (key: string) => void,
+  onViewLocation: () => void 
+}> = ({ user, staff, reports, announcements, sosAlerts, onResolveSos, onViewLocation }) => {
+  const pendingReports = reports.filter(r => r.status === 'Menunggu Verifikasi');
+  const malePPSU = staff.filter(s => s.jenisKelamin === 'Laki-Laki').length;
+  const femalePPSU = staff.filter(s => s.jenisKelamin === 'Perempuan').length;
+  const recentAnnouncements = announcements.slice(0, 3); // show latest 3
+
   return (
     <div className="space-y-6">
       {/* Welcome & Profile Header */}
@@ -136,28 +153,150 @@ const StaffDashboardSection: React.FC<{ user: User, citizens: Citizen[], staff: 
         <Building2 className="absolute -right-16 -bottom-16 size-64 opacity-10" />
       </div>
 
-      {/* Full Statistics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-md transition-all group">
-          <div className="flex justify-between items-start mb-4">
-            <div className="w-12 h-12 bg-teal-50 text-teal-600 rounded-2xl flex items-center justify-center group-hover:bg-teal-600 group-hover:text-white transition-all">
-              <UsersRound size={24} />
+      {/* SOS Active Cards */}
+      {sosAlerts.length > 0 && (
+         <div className="bg-red-50 border border-red-200 p-6 rounded-3xl shadow-sm animate-in fade-in zoom-in duration-300 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-red-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse"></div>
+            <div className="absolute bottom-0 left-0 w-64 h-64 bg-red-400 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse"></div>
+            
+            <h3 className="text-xl font-black text-red-700 mb-4 flex items-center gap-2 relative z-10">
+              <AlertTriangle size={24} className="animate-pulse" /> Petugas Dalam Bahaya!
+              <span className="bg-red-600 text-white text-[10px] px-3 py-1 rounded-full uppercase tracking-widest font-bold ml-auto shadow-sm animate-pulse">
+                 {sosAlerts.length} Sinyal Darurat Aktif
+              </span>
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10">
+               {sosAlerts.map(alert => (
+                  <div key={alert.key} className="bg-white p-5 rounded-2xl shadow-lg shadow-red-900/5 border border-red-100 flex flex-col justify-between">
+                     <div className="flex justify-between items-start mb-4">
+                        <div className="flex gap-3">
+                           <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center shrink-0 shadow-inner">
+                              <UserCircle size={28} />
+                           </div>
+                           <div>
+                              <p className="font-black text-slate-800 text-lg uppercase leading-tight">{alert.name}</p>
+                              <p className="text-sm text-slate-500 font-bold font-mono text-[10px]">NIK: {alert.nik}</p>
+                              <p className="text-xs text-red-600 font-bold mt-1 uppercase tracking-widest flex items-center gap-1">
+                                 Waktu Sinyal: {new Date(alert.time).toLocaleTimeString('id-ID')}
+                              </p>
+                           </div>
+                        </div>
+                     </div>
+                     <div className="flex gap-3">
+                        <button 
+                           onClick={() => onResolveSos(alert.key)} 
+                           className="flex-1 bg-red-50 hover:bg-red-100 text-red-700 font-bold py-2.5 rounded-xl border border-red-200 transition-all text-sm shadow-sm"
+                        >
+                           Selesai
+                        </button>
+                        <button 
+                           onClick={onViewLocation} 
+                           className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-xl transition-all shadow-md shadow-red-900/20 text-sm flex items-center justify-center gap-2"
+                        >
+                           <MapPinned size={16} /> Detail Lokasi
+                        </button>
+                     </div>
+                  </div>
+               ))}
             </div>
+         </div>
+      )}
+
+      {/* Papan Pengumuman */}
+      {recentAnnouncements.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 p-6 rounded-3xl shadow-sm">
+          <h3 className="text-lg font-black text-amber-800 mb-4 flex items-center gap-2">
+            <Megaphone size={20} className="text-amber-500" /> Papan Pengumuman
+          </h3>
+          <div className="space-y-4">
+            {recentAnnouncements.map(ann => (
+              <div key={ann.id} className="bg-white p-4 rounded-2xl shadow-sm border border-amber-100 flex gap-4">
+                <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-500 flex items-center justify-center shrink-0">
+                   <Bell size={20} />
+                </div>
+                <div>
+                   <h4 className="font-bold text-slate-800">{ann.title}</h4>
+                   <p className="text-sm text-slate-600 mt-1">{ann.content}</p>
+                   <p className="text-[10px] text-slate-400 font-bold uppercase mt-2">{new Date(ann.date).toLocaleDateString('id-ID')} • Diumumkan Oleh: {ann.authorName}</p>
+                </div>
+              </div>
+            ))}
           </div>
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Populasi Warga</p>
-          <h3 className="text-3xl font-black text-slate-800">{citizens.length} <span className="text-sm font-bold text-slate-400">Jiwa</span></h3>
+        </div>
+      )}
+
+      {/* Statistik PPSU Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-md transition-all group">
+          <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-blue-600 group-hover:text-white transition-all">
+            <UsersRound size={24} />
+          </div>
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Anggota PPSU</p>
+          <h3 className="text-3xl font-black text-slate-800">{staff.length} <span className="text-sm font-bold text-slate-400">Personil</span></h3>
         </div>
 
         <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-md transition-all group">
-          <div className="flex justify-between items-start mb-4">
-            <div className="w-12 h-12 bg-orange-50 text-orange-600 rounded-2xl flex items-center justify-center group-hover:bg-orange-600 group-hover:text-white transition-all">
-              <Activity size={24} />
-            </div>
-            <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-[10px] font-black rounded-lg">Lapangan</span>
+          <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-indigo-600 group-hover:text-white transition-all">
+            <UsersRound size={24} />
           </div>
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">PPSU Bertugas</p>
-          <h3 className="text-3xl font-black text-slate-800">{staff.filter(s => s.status === 'Bertugas').length} <span className="text-sm font-bold text-slate-400">Personil</span></h3>
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">PPSU Laki-Laki</p>
+          <h3 className="text-3xl font-black text-slate-800">{malePPSU} <span className="text-sm font-bold text-slate-400">Personil</span></h3>
         </div>
+
+        <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-md transition-all group">
+          <div className="w-12 h-12 bg-pink-50 text-pink-600 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-pink-600 group-hover:text-white transition-all">
+            <UsersRound size={24} />
+          </div>
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">PPSU Perempuan</p>
+          <h3 className="text-3xl font-black text-slate-800">{femalePPSU} <span className="text-sm font-bold text-slate-400">Personil</span></h3>
+        </div>
+      </div>
+
+      {/* Tabel Tugas Pending Verifikasi */}
+      <div className="bg-white rounded-[2rem] box-border border border-slate-100 shadow-sm p-6 overflow-hidden">
+         <h3 className="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
+            <ClipboardList className="text-orange-500" /> Tugas PPSU - Pending Verifikasi
+            <span className="bg-orange-100 text-orange-600 text-xs px-2 py-1 rounded-lg ml-auto">{pendingReports.length} Menunggu</span>
+         </h3>
+         <div className="overflow-x-auto custom-scrollbar pb-2">
+            <table className="w-full text-left text-sm border-collapse">
+               <thead>
+                  <tr className="border-b border-slate-100 text-slate-400 uppercase text-[10px] font-bold tracking-wider">
+                     <th className="pb-3 px-4 text-center">No</th>
+                     <th className="pb-3">Data Pelapor</th>
+                     <th className="pb-3">Kategori</th>
+                     <th className="pb-3">Judul Masalah</th>
+                     <th className="pb-3">Waktu Laporan</th>
+                  </tr>
+               </thead>
+               <tbody>
+                  {pendingReports.length === 0 ? (
+                     <tr>
+                        <td colSpan={5} className="py-12 text-center text-slate-400">
+                           <ShieldCheck size={48} className="mx-auto mb-3 opacity-20" />
+                           <p className="font-semibold">Bagus! Tidak ada laporan yang menunggu verifikasi.</p>
+                        </td>
+                     </tr>
+                  ) : (
+                     pendingReports.map((report, idx) => (
+                        <tr key={report.id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                           <td className="py-4 px-4 text-center font-bold text-slate-400">{idx + 1}</td>
+                           <td className="py-4">
+                              <p className="font-bold text-slate-800">{report.reporterName}</p>
+                              {report.reporterNik && <p className="text-[10px] text-slate-400 font-mono">NIK: {report.reporterNik}</p>}
+                           </td>
+                           <td className="py-4">
+                              <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider">{report.category}</span>
+                           </td>
+                           <td className="py-4 font-medium text-slate-700 max-w-xs truncate" title={report.title}>{report.title}</td>
+                           <td className="py-4 text-xs font-bold text-slate-500">{new Date(report.timestamp).toLocaleString('id-ID')}</td>
+                        </tr>
+                     ))
+                  )}
+               </tbody>
+            </table>
+         </div>
       </div>
     </div>
   );
@@ -177,6 +316,11 @@ const App: React.FC = () => {
   const [citizens, setCitizens] = useState<Citizen[]>(MOCK_CITIZENS);
   const [serviceRequests, setServiceRequests] = useState<ServiceRequest[]>(MOCK_SERVICE_REQUESTS);
   const [ratings, setRatings] = useState<ServiceRating[]>(() => loadData('app_ratings', []));
+  const [announcements, setAnnouncements] = useState<Announcement[]>(() => loadData('app_announcements', []));
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>(() => loadData('app_attendance', []));
+  const [receivedSosAlerts, setReceivedSosAlerts] = useState<any[]>([]);
+  const [showSosAlertModal, setShowSosAlertModal] = useState(false);
+  const [lastAlertCount, setLastAlertCount] = useState(0);
 
   // Derive initial users from all data sources (excluding static dummy citizens)
   const initialUsers: User[] = useMemo(() => {
@@ -234,7 +378,40 @@ const App: React.FC = () => {
   useEffect(() => { saveData('app_settings', settings); }, [settings]);
   useEffect(() => { saveData('app_users', users); }, [users]);
   useEffect(() => { saveData('app_ratings', ratings); }, [ratings]);
+  useEffect(() => { saveData('app_announcements', announcements); }, [announcements]);
+  useEffect(() => { saveData('app_attendance', attendanceRecords); }, [attendanceRecords]);
 
+  // Admin SOS Detection Effect
+  useEffect(() => {
+    const handleStorage = () => {
+      if (!currentUser || currentUser.role === 'PPSU') return;
+
+      const keys = Object.keys(localStorage).filter(k => k.startsWith('sos_alert_'));
+      const alerts = keys.map(k => {
+        const val = localStorage.getItem(k);
+        return val ? { key: k, ...JSON.parse(val) } : null;
+      }).filter(Boolean);
+
+      // Only show alerts created in the last 15 minutes to avoid obsolete popups
+      const recentAlerts = alerts.filter(a => {
+         const alertTime = new Date(a.time).getTime();
+         return (Date.now() - alertTime) < 15 * 60 * 1000;
+      });
+      
+      setReceivedSosAlerts(recentAlerts);
+    };
+
+    handleStorage();
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener('local-storage-update', handleStorage);
+    const interval = setInterval(handleStorage, 3000);
+
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('local-storage-update', handleStorage);
+      clearInterval(interval);
+    };
+  }, [currentUser]);
   const handleLoginSuccess = (user: User) => {
     setCurrentUser(user);
     setActiveSubmenu(user.role === 'PPSU' ? 'PPSU' : 'DASHBOARD');
@@ -264,6 +441,7 @@ const App: React.FC = () => {
           setIsSosSent(true);
           // Simulate sending to Pimpinan / Admin via localStorage
           localStorage.setItem(`sos_alert_${Date.now()}`, JSON.stringify({ nik: currentUser?.nik, name: currentUser?.name, time: new Date().toISOString() }));
+          window.dispatchEvent(new Event('local-storage-update'));
           setTimeout(() => {
               setIsSosActive(false);
               setIsSosSent(false);
@@ -308,33 +486,73 @@ const App: React.FC = () => {
   }
 
   const renderContent = () => {
+    const handleResolveSos = (key: string) => {
+        localStorage.removeItem(key);
+        setReceivedSosAlerts(prev => prev.filter(a => a.key !== key));
+        window.dispatchEvent(new Event('local-storage-update'));
+    };
+    
     switch (activeSubmenu) {
-      case 'PPSU':
+      /* Admin/Pimpinan Specific Routes */
+      case 'DASHBOARD':
+        return (
+           <StaffDashboardSection 
+              user={currentUser} 
+              staff={staffList} 
+              reports={reports} 
+              announcements={announcements} 
+              sosAlerts={receivedSosAlerts}
+              onResolveSos={handleResolveSos}
+              onViewLocation={() => setActiveSubmenu('MAP_PPSU')}
+           />
+        );
+      case 'PENGUMUMAN': 
+        return <AnnouncementSection user={currentUser} users={users} announcements={announcements} setAnnouncements={setAnnouncements} />;
+      case 'PPSU': // Data PPSU
         return <PPSUSection user={currentUser} staffList={staffList} setStaffList={setStaffList} />;
-      case 'INPUT_TUGAS':
-        return <PPSUTaskInputSection user={currentUser} reports={reports} setReports={setReports} />;
+      case 'ADMIN_ABSEN': // Data Absen PPSU
+        return <AdminReportsSection mode="ABSEN" attendanceRecords={attendanceRecords} reports={reports} />;
+      case 'ADMIN_TUGAS': // Data Tugas PPSU
+        return <AdminReportsSection mode="TUGAS" attendanceRecords={attendanceRecords} reports={reports} />;
       case 'MONITORING':
         return <DutySection user={currentUser} reports={reports} setReports={setReports} staffList={staffList} setStaffList={setStaffList} />;
-      case 'MAP_PPSU':
-        return <MapSection reports={reports} setReports={setReports} staffList={staffList} setStaffList={setStaffList} />;
-      case 'ABSENSI':
-        return <AttendanceSection user={currentUser} />;
-      case 'STATS':
+      case 'MAP_PPSU': // MAP ANGGOTA
+        return <MapSection reports={reports} setReports={setReports} staffList={staffList} setStaffList={setStaffList} sosAlerts={receivedSosAlerts} />;
+      case 'STATS': // Report (General for Admin, Specific for PPSU)
         if (currentUser.role === 'PPSU') {
            return <PPSUMyReportsSection user={currentUser} reports={reports} />;
         }
-        return <StatisticsSection />;
-      case 'SETTINGS':
-        return <SettingsSection settings={settings} onUpdate={setSettings} />;
+        return <AdminReportsSection mode="FULL_REPORT" attendanceRecords={attendanceRecords} reports={reports} />;
       case 'USER_MANAGEMENT':
         return <UserManagementSection users={users} setUsers={setUsers} initialTab="SEMUA" />;
+      case 'SETTINGS':
+        return <SettingsSection settings={settings} onUpdate={setSettings} />;
+
+      /* PPSU Mobile Routes */
+      case 'INPUT_TUGAS':
+        return <PPSUTaskInputSection user={currentUser} reports={reports} setReports={setReports} />;
+      case 'ABSENSI':
+        return <AttendanceSection user={currentUser} onRecord={(rec) => setAttendanceRecords([rec, ...attendanceRecords])} />;
+        
       default:
-        return <PPSUSection user={currentUser} staffList={staffList} setStaffList={setStaffList} />;
+        // Default fallback to Dashboard for Admin, and PPSUSection for compatibility
+        if (currentUser.role === 'PPSU') return <PPSUSection user={currentUser} staffList={staffList} setStaffList={setStaffList} />;
+        return (
+           <StaffDashboardSection 
+              user={currentUser} 
+              staff={staffList} 
+              reports={reports} 
+              announcements={announcements} 
+              sosAlerts={receivedSosAlerts}
+              onResolveSos={handleResolveSos}
+              onViewLocation={() => setActiveSubmenu('MAP_PPSU')}
+           />
+        );
     }
   };
 
   // Dynamic Menu Groups based on Role
-  const menuGroups = [
+  const menuGroups = currentUser.role === 'PPSU' ? [
     {
       title: 'MENU PASUKAN ORANGE (PPSU)',
       items: [
@@ -343,12 +561,25 @@ const App: React.FC = () => {
         { id: 'INPUT_TUGAS', label: 'Tugas', icon: <ClipboardList size={20} />, color: 'bg-indigo-500' },
         { id: 'STATS', label: 'Laporan Saya', icon: <FileText size={20} />, color: 'bg-green-500' },
       ]
+    }
+  ] : [
+    {
+      title: 'MANAJEMEN PPSU',
+      items: [
+        { id: 'DASHBOARD', label: 'Dashboard', icon: <Activity size={20} />, color: 'bg-indigo-600' },
+        { id: 'PENGUMUMAN', label: 'Pengumuman', icon: <Megaphone size={20} />, color: 'bg-amber-500' },
+        { id: 'PPSU', label: 'Data PPSU', icon: <UsersRound size={20} />, color: 'bg-blue-500' },
+        { id: 'ADMIN_ABSEN', label: 'Data Absen PPSU', icon: <Camera size={20} />, color: 'bg-emerald-500' },
+        { id: 'MAP_PPSU', label: 'MAP ANGGOTA', icon: <MapPinned size={20} />, color: 'bg-orange-500' },
+        { id: 'ADMIN_TUGAS', label: 'Data Tugas PPSU', icon: <ClipboardList size={20} />, color: 'bg-purple-500' },
+        { id: 'STATS', label: 'Report', icon: <FileText size={20} />, color: 'bg-rose-500' },
+      ]
     },
     {
       title: 'PENGATURAN',
       items: [
-        { id: 'SETTINGS', label: 'Sistem', icon: <Wrench size={20} />, color: 'bg-slate-600' },
-        { id: 'USER_MANAGEMENT', label: 'Manajemen User', icon: <UserCog size={20} />, color: 'bg-slate-600' },
+        { id: 'USER_MANAGEMENT', label: 'User Management', icon: <UserCog size={20} />, color: 'bg-slate-600' },
+        { id: 'SETTINGS', label: 'Setting Aplikasi', icon: <Settings size={20} />, color: 'bg-slate-600' },
       ]
     }
   ];
@@ -734,6 +965,61 @@ const App: React.FC = () => {
                        </div>
                    </>
                )}
+           </div>
+        </div>
+    )}
+
+    {/* Admin Receiver SOS Modal */}
+    {currentUser?.role !== 'PPSU' && receivedSosAlerts.length > 0 && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-slate-900/90 backdrop-blur-md p-6">
+           <div className="bg-red-600 w-full max-w-md rounded-[2.5rem] p-8 flex flex-col items-center text-center shadow-2xl relative overflow-hidden animate-in fade-in zoom-in duration-300">
+               <div className="absolute inset-0 bg-red-500 animate-[pulse_1s_infinite] mix-blend-screen opacity-50"></div>
+               <div className="w-24 h-24 rounded-full bg-white text-red-600 flex items-center justify-center mb-6 relative z-10 shadow-lg">
+                   <AlertTriangle size={56} className="animate-pulse" />
+               </div>
+               
+               <h2 className="text-3xl font-black text-white relative z-10 mb-2 leading-tight tracking-tight uppercase">
+                   Peringatan Darurat!
+               </h2>
+               <div className="bg-white/20 px-4 py-2 rounded-xl border border-white/30 backdrop-blur-md relative z-10 mb-6 flex animate-pulse">
+                   <span className="text-white font-black tracking-widest text-sm uppercase">Petugas Terindikasi Dalam Bahaya</span>
+               </div>
+               
+               <div className="space-y-3 w-full relative z-10 mb-8 max-h-64 overflow-y-auto custom-scrollbar">
+                   {receivedSosAlerts.map(alert => (
+                       <div key={alert.key} className="bg-white rounded-2xl p-4 text-left shadow-xl border border-red-100 flex items-center justify-between">
+                          <div>
+                              <p className="font-black text-slate-800 text-lg uppercase">{alert.name}</p>
+                              <p className="text-sm text-slate-500 font-bold font-mono text-[10px]">NIK: {alert.nik}</p>
+                              <p className="text-[10px] text-red-500 font-bold mt-1 uppercase tracking-widest">
+                                 {new Date(alert.time).toLocaleTimeString('id-ID')}
+                              </p>
+                          </div>
+                          <button onClick={() => {
+                             setActiveSubmenu('MAP_PPSU');
+                             localStorage.removeItem(alert.key);
+                             setReceivedSosAlerts(prev => prev.filter(a => a.key !== alert.key));
+                             window.dispatchEvent(new Event('local-storage-update'));
+                          }} className="bg-red-50 hover:bg-red-100 text-red-600 p-3 rounded-xl transition-all shadow-sm border border-red-100 flex flex-col items-center" title="Lihat Lokasi GPS">
+                              <MapPinned size={20} />
+                              <span className="text-[8px] font-bold uppercase mt-1">Detail</span>
+                          </button>
+                       </div>
+                   ))}
+               </div>
+
+               <div className="flex w-full relative z-10">
+                   <button 
+                       onClick={() => {
+                           receivedSosAlerts.forEach(a => localStorage.removeItem(a.key));
+                           setReceivedSosAlerts([]);
+                           window.dispatchEvent(new Event('local-storage-update'));
+                       }} 
+                       className="w-full py-4 bg-red-800 hover:bg-red-900 text-white font-black rounded-xl transition-all uppercase tracking-widest text-sm shadow-xl"
+                   >
+                       Tutup Semua Peringatan
+                   </button>
+               </div>
            </div>
         </div>
     )}
