@@ -16,7 +16,10 @@ import {
   Search,
   ExternalLink,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Camera,
+  CheckCircle2,
+  AlertTriangle
 } from 'lucide-react';
 import { Staff, Gender, User } from '../types';
 import ProfileModal from './ProfileModal';
@@ -121,6 +124,71 @@ const PPSUSection: React.FC<PPSUSectionProps> = ({ user, staffList, setStaffList
     }
     return pages;
   };
+
+  if (user.role === 'PPSU') {
+    const todayDateStr = new Date().toISOString().split('T')[0];
+    const hasCheckedIn = localStorage.getItem(`attn_${user.nik}_${todayDateStr}_Absen Masuk`) === 'true';
+    const hasCheckedOut = localStorage.getItem(`attn_${user.nik}_${todayDateStr}_Absen Keluar`) === 'true';
+
+    return (
+      <div className="space-y-6 max-w-3xl mx-auto pb-6">
+         {/* HEADER / WELCOME */}
+         <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-[2rem] p-8 text-white flex flex-col sm:flex-row items-center gap-6 shadow-xl shadow-orange-200">
+            <div className="relative">
+               <img src={user.avatar || 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=800'} alt={user.name} className="w-24 h-24 rounded-full border-4 border-white shadow-md object-cover" />
+               <div className="absolute bottom-0 right-0 w-6 h-6 bg-emerald-500 border-2 border-white rounded-full"></div>
+            </div>
+            <div className="text-center sm:text-left flex-1">
+               <h2 className="text-3xl font-black mb-1">Halo, {user.name}</h2>
+               <p className="text-orange-100 font-medium text-sm mb-4">Pasukan Orange Kelurahan Petukangan Utara</p>
+               <div className="inline-flex items-center gap-2 bg-white/20 px-3 py-1.5 rounded-xl backdrop-blur-sm">
+                  <FileText size={16} className="text-white" />
+                  <span className="font-mono text-sm tracking-widest font-bold">ID: {user.username.toUpperCase()}</span>
+               </div>
+            </div>
+         </div>
+
+         {/* STATUS ABSENSI HARI INI */}
+         <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col gap-4">
+            <h3 className="font-bold text-slate-800 flex items-center gap-2">
+               <Camera size={18} className="text-indigo-500" /> Status Kehadiran Hari Ini
+            </h3>
+            <div className="grid grid-cols-2 gap-4">
+               <div className={`p-4 rounded-2xl flex flex-col justify-center items-center gap-2 text-center transition-all ${hasCheckedIn ? 'bg-emerald-50 border border-emerald-100 text-emerald-700' : 'bg-slate-50 border border-slate-100 text-slate-500'}`}>
+                  {hasCheckedIn ? <CheckCircle2 size={28} className="text-emerald-500" /> : <AlertTriangle size={28} className="text-slate-400" />}
+                  <span className="text-sm font-bold">{hasCheckedIn ? 'Sudah Masuk' : 'Belum Absen Masuk'}</span>
+               </div>
+               <div className={`p-4 rounded-2xl flex flex-col justify-center items-center gap-2 text-center transition-all ${hasCheckedOut ? 'bg-emerald-50 border border-emerald-100 text-emerald-700' : 'bg-slate-50 border border-slate-100 text-slate-500'}`}>
+                  {hasCheckedOut ? <CheckCircle2 size={28} className="text-emerald-500" /> : <AlertTriangle size={28} className="text-slate-400" />}
+                  <span className="text-sm font-bold">{hasCheckedOut ? 'Sudah Pulang' : 'Belum Absen Pulang'}</span>
+               </div>
+            </div>
+         </div>
+
+         {/* PENGUMUMAN */}
+         <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
+            <h3 className="font-bold text-slate-800 flex items-center gap-2 mb-4">
+               <MessageCircle size={18} className="text-blue-500" /> Pengumuman Pimpinan
+            </h3>
+            <div className="space-y-4">
+               <div className="p-4 bg-blue-50 border border-blue-100 rounded-2xl">
+                  <div className="flex justify-between items-start mb-2">
+                     <h4 className="font-bold text-blue-800 text-sm">Fokus Titik Rawan Banjir</h4>
+                     <span className="text-[10px] uppercase font-bold text-blue-500 bg-blue-100 px-2 py-1 rounded-md">Penting</span>
+                  </div>
+                  <p className="text-sm text-blue-700 leading-relaxed font-medium">Mengingat curah hujan yang tinggi, harap seluruh personil fokus pada pembersihan saluran air (gorong-gorong) di sepanjang Jalan Ciledug Raya.</p>
+               </div>
+               
+               <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-1 h-full bg-orange-500"></div>
+                  <h4 className="font-bold text-slate-800 text-sm mb-1">Apel Pagi Gabungan</h4>
+                  <p className="text-sm text-slate-500 font-medium mb-2">Besok jam 07:00 WIB di Halaman Kantor Kelurahan Petukangan Utara. Harap hadir tepat waktu menggunakan seragam atribut lengkap.</p>
+               </div>
+            </div>
+         </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

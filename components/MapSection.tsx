@@ -85,25 +85,7 @@ const MapSection: React.FC<MapSectionProps> = ({ reports, setReports, staffList,
       maxZoom: 19
     }).addTo(map);
 
-    // Boundary Petukangan Utara (Simplified)
-    const boundaryCoords: L.LatLngExpression[] = [
-      [-6.2345, 106.7525],
-      [-6.2300, 106.7550],
-      [-6.2280, 106.7620],
-      [-6.2320, 106.7680],
-      [-6.2380, 106.7720],
-      [-6.2450, 106.7680],
-      [-6.2480, 106.7600],
-      [-6.2420, 106.7530]
-    ];
 
-    L.polygon(boundaryCoords, {
-      color: '#f97316', // orange-500
-      weight: 8, // Thickened boundary
-      fillColor: '#f97316',
-      fillOpacity: 0.1,
-      dashArray: '10, 10'
-    }).addTo(map);
 
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 

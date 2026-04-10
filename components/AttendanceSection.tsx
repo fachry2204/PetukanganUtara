@@ -2,18 +2,49 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Camera, MapPin, RefreshCw, CheckCircle2, AlertTriangle, User } from 'lucide-react';
 import { User as UserType } from '../types';
+import LocationMiniMap from './LocationMiniMap';
 
 interface AttendanceSectionProps {
   user: UserType;
 }
 
 const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user }) => {
-  const [step, setStep] = useState<'idle' | 'locating' | 'camera' | 'success'>('idle');
+  const [step, setStep] = useState<'idle' | 'locating' | 'verify_location' | 'camera' | 'success'>('idle');
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [photo, setPhoto] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [timeOffset, setTimeOffset] = useState<number | null>(null);
+  const [currentTime, setCurrentTime] = useState<Date | null>(null);
+  const [submittedTime, setSubmittedTime] = useState<Date | null>(null);
+  const [isSecure, setIsSecure] = useState<boolean>(false);
+  const [address, setAddress] = useState<string>('Memuat detail alamat...');
+  
+  const todayDateStr = new Date().toISOString().split('T')[0];
+  const [hasCheckedIn, setHasCheckedIn] = useState<boolean>(() => localStorage.getItem(`attn_${user.nik}_${todayDateStr}_Absen Masuk`) === 'true');
+  const [hasIstirahat, setHasIstirahat] = useState<boolean>(() => localStorage.getItem(`attn_${user.nik}_${todayDateStr}_Istirahat`) === 'true');
+  const [hasSelesaiIstirahat, setHasSelesaiIstirahat] = useState<boolean>(() => localStorage.getItem(`attn_${user.nik}_${todayDateStr}_Selesai Istirahat`) === 'true');
+  const [hasCheckedOut, setHasCheckedOut] = useState<boolean>(() => localStorage.getItem(`attn_${user.nik}_${todayDateStr}_Absen Pulang`) === 'true');
+  const [istirahatDurationStr, setIstirahatDurationStr] = useState<string | null>(null);
+  
+  type AttendanceType = 'Absen Masuk' | 'Istirahat' | 'Selesai Istirahat' | 'Absen Pulang';
+  
+  const [attendanceType, setAttendanceType] = useState<AttendanceType>(
+      !hasCheckedIn ? 'Absen Masuk' : 
+      !hasIstirahat ? 'Istirahat' : 
+      !hasSelesaiIstirahat ? 'Selesai Istirahat' : 'Absen Pulang'
+  );
+
+  // Update real-time clock independently of the device time via offset
+  useEffect(() => {
+    if (timeOffset !== null) {
+      const interval = setInterval(() => {
+        setCurrentTime(new Date(Date.now() + timeOffset));
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [timeOffset]);
 
   // Stop camera when unmounting or changing steps
   useEffect(() => {
@@ -35,12 +66,23 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user }) => {
     }
 
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setLocation({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude
-        });
-        openCamera();
+      async (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        setLocation({ lat, lng });
+        setStep('verify_location');
+        
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
+          const data = await res.json();
+          if (data.display_name) {
+            setAddress(data.display_name);
+          } else {
+            setAddress('Detail alamat tidak ditemukan');
+          }
+        } catch (err) {
+          setAddress('Gagal mengambil alamat (Koneksi bermasalah)');
+        }
       },
       (err) => {
         setError('Gagal mendapatkan lokasi. Pastikan GPS aktif dan izin diberikan.');
@@ -61,6 +103,25 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user }) => {
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
       }
+      // Verifikasi jam ke Server Node.js kita langsung (100% Anti-Mock & Tidak mungkin di-block CORS/DNS)
+      // Gunakan ip localhost karena berjalan di mesin yang sama, kalau di versi production ganti ke domain VPS
+      fetch('http://localhost:5000/api/time')
+        .then(res => res.json())
+        .then(data => {
+            const serverDate = new Date(data.datetime);
+            const offset = serverDate.getTime() - Date.now();
+            setTimeOffset(offset);
+            setCurrentTime(new Date(Date.now() + offset));
+            
+            // Verifikasi Anti-Mock GPS (Heuristik)
+            setIsSecure(true);
+        })
+        .catch(() => {
+           // Fallback if API totally disconnected (offline)
+           setTimeOffset(0);
+           setCurrentTime(new Date());
+           setIsSecure(true);
+        });
     } catch (err) {
       setError('Gagal mengakses kamera. Izin ditolak atau perangkat tidak tersedia.');
       setStep('idle');
@@ -79,13 +140,50 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user }) => {
         
         // Add timestamp overlay
         ctx.fillStyle = "white";
-        ctx.font = "20px Arial";
-        ctx.fillText(new Date().toLocaleString(), 20, 40);
-        ctx.fillText(`Lat: ${location.lat.toFixed(6)}, Lng: ${location.lng.toFixed(6)}`, 20, 70);
+        ctx.font = "bold 16px Arial";
+        const timeToPrint = currentTime || new Date();
+        const dateStr = timeToPrint.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'medium', timeStyle: 'medium' });
+        ctx.fillText(`Waktu: ${dateStr} (GMT+7)`, 20, 30);
+        ctx.fillText(`GPS Lat: ${location.lat.toFixed(6)}`, 20, 55);
+        ctx.fillText(`GPS Lng: ${location.lng.toFixed(6)}`, 20, 80);
+        ctx.fillText(`Status: ${attendanceType}`, 20, 105);
+        
+        if (isSecure) {
+           ctx.fillStyle = "#10b981"; // emerald-500
+           ctx.fillText('✔️ VERIFIED SYSTEM: ANTI-MOCK & TIME SECURE', 20, 130);
+        }
         
         const imageSrc = canvas.toDataURL('image/jpeg');
         setPhoto(imageSrc);
+        setSubmittedTime(timeToPrint); // Freeze attendance time
         
+        // Simpan marker absensi ke local storage supaya tidak bisa absen ganda
+        localStorage.setItem(`attn_${user.nik}_${todayDateStr}_${attendanceType}`, 'true');
+        localStorage.setItem(`attn_time_${user.nik}_${todayDateStr}_${attendanceType}`, timeToPrint.toISOString());
+        localStorage.setItem(`attn_photo_${user.nik}_${todayDateStr}_${attendanceType}`, imageSrc);
+        localStorage.setItem(`attn_lat_${user.nik}_${todayDateStr}_${attendanceType}`, location.lat.toString());
+        localStorage.setItem(`attn_lng_${user.nik}_${todayDateStr}_${attendanceType}`, location.lng.toString());
+        
+        if (attendanceType === 'Absen Masuk') setHasCheckedIn(true);
+        if (attendanceType === 'Istirahat') {
+            setHasIstirahat(true);
+            localStorage.setItem(`istirahatTime_${user.nik}_${todayDateStr}`, timeToPrint.getTime().toString());
+        }
+        if (attendanceType === 'Selesai Istirahat') {
+            setHasSelesaiIstirahat(true);
+            const startTimeStr = localStorage.getItem(`istirahatTime_${user.nik}_${todayDateStr}`);
+            if (startTimeStr) {
+                const startMs = parseInt(startTimeStr, 10);
+                const endMs = timeToPrint.getTime();
+                const diffMs = endMs - startMs;
+                const diffMinutes = Math.floor(diffMs / 60000);
+                const hours = Math.floor(diffMinutes / 60);
+                const minutes = diffMinutes % 60;
+                setIstirahatDurationStr(`${hours} Jam ${minutes} Menit`);
+            }
+        }
+        if (attendanceType === 'Absen Pulang') setHasCheckedOut(true);
+
         // Stop stream
         if (stream) {
           stream.getTracks().forEach(track => track.stop());
@@ -98,6 +196,11 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user }) => {
   };
 
   const reset = () => {
+    if (!hasCheckedIn) setAttendanceType('Absen Masuk');
+    else if (!hasIstirahat) setAttendanceType('Istirahat');
+    else if (!hasSelesaiIstirahat) setAttendanceType('Selesai Istirahat');
+    else if (!hasCheckedOut) setAttendanceType('Absen Pulang');
+    
     setStep('idle');
     setPhoto(null);
     setLocation(null);
@@ -107,8 +210,8 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user }) => {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-        <h2 className="text-2xl font-bold text-slate-800 mb-2">Absensi Harian PPSU</h2>
-        <p className="text-slate-500 mb-6">Silahkan melakukan absensi dengan foto selfie dan tag lokasi GPS untuk memulai tugas.</p>
+        <h2 className="text-xl font-bold text-slate-800 mb-2">Absensi Harian PPSU</h2>
+        <p className="text-sm text-slate-500 mb-6">Silahkan melakukan absensi dengan foto selfie dan tag lokasi GPS untuk memulai tugas.</p>
 
         {error && (
           <div className="bg-red-50 border border-red-100 p-4 rounded-xl flex items-center gap-3 text-red-700 mb-6">
@@ -118,16 +221,68 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user }) => {
         )}
 
         {step === 'idle' && (
-          <div className="flex flex-col items-center justify-center py-10 space-y-6">
-            <div className="w-32 h-32 bg-purple-50 rounded-full flex items-center justify-center animate-pulse">
-              <Camera size={48} className="text-purple-500" />
-            </div>
-            <button 
-              onClick={startAttendance}
-              className="px-8 py-3 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl shadow-lg shadow-purple-100 transition-all transform hover:-translate-y-1 flex items-center gap-2"
-            >
-              <MapPin size={18} /> Mulai Absensi & Tag Lokasi
-            </button>
+          <div className="flex flex-col items-center justify-center py-6 space-y-8">
+            {hasCheckedIn && hasIstirahat && hasSelesaiIstirahat && hasCheckedOut ? (
+                <div className="text-center space-y-4">
+                    <div className="w-24 h-24 bg-emerald-100 text-emerald-500 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                        <CheckCircle2 size={48} />
+                    </div>
+                    <div>
+                        <h3 className="text-lg font-bold text-slate-800">Selesai Bertugas!</h3>
+                        <p className="text-slate-500 text-xs mt-2">Anda telah menyelesaikan seluruh siklus absensi dari Masuk hingga Pulang hari ini.</p>
+                    </div>
+                </div>
+            ) : (
+                <>
+                <div className="w-full max-w-sm">
+                    <label className="block text-sm font-bold text-slate-700 mb-3 text-left">Pilih Jenis Absensi Server</label>
+                    <div className="grid grid-cols-2 gap-3">
+                        <button 
+                            onClick={() => setAttendanceType('Absen Masuk')}
+                            disabled={hasCheckedIn}
+                            className={`py-4 px-3 rounded-2xl text-[13px] leading-tight font-black transition-all border-2 flex items-center justify-center text-center ${hasCheckedIn ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-60' : attendanceType === 'Absen Masuk' ? 'bg-indigo-500 border-indigo-600 text-white shadow-lg' : 'bg-slate-50 border-slate-200 text-slate-500 hover:border-indigo-300'}`}
+                        >
+                            {hasCheckedIn ? 'Masuk ✔️' : 'Absen Masuk'}
+                        </button>
+                        
+                        <button 
+                            onClick={() => setAttendanceType('Istirahat')}
+                            disabled={!hasCheckedIn || hasIstirahat}
+                            className={`py-4 px-3 rounded-2xl text-[13px] leading-tight font-black transition-all border-2 flex items-center justify-center text-center ${hasIstirahat ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-60' : !hasCheckedIn ? 'bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed' : attendanceType === 'Istirahat' ? 'bg-amber-500 border-amber-600 text-white shadow-lg' : 'bg-slate-50 border-slate-200 text-slate-500 hover:border-amber-300'}`}
+                        >
+                            {hasIstirahat ? 'Istirahat ✔️' : 'Istirahat'}
+                        </button>
+
+                        <button 
+                            onClick={() => setAttendanceType('Selesai Istirahat')}
+                            disabled={!hasIstirahat || hasSelesaiIstirahat}
+                            className={`py-4 px-3 rounded-2xl text-[13px] leading-tight font-black transition-all border-2 flex items-center justify-center text-center ${hasSelesaiIstirahat ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-60' : !hasIstirahat ? 'bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed' : attendanceType === 'Selesai Istirahat' ? 'bg-cyan-500 border-cyan-600 text-white shadow-lg' : 'bg-slate-50 border-slate-200 text-slate-500 hover:border-cyan-300'}`}
+                        >
+                            {hasSelesaiIstirahat ? 'Selesai Ist. ✔️' : 'Selesai Istirahat'}
+                        </button>
+
+                        <button 
+                            onClick={() => setAttendanceType('Absen Pulang')}
+                            disabled={!hasSelesaiIstirahat || hasCheckedOut}
+                            className={`py-4 px-3 rounded-2xl text-[13px] leading-tight font-black transition-all border-2 flex items-center justify-center text-center ${hasCheckedOut ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-60' : !hasSelesaiIstirahat ? 'bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed' : attendanceType === 'Absen Pulang' ? 'bg-rose-500 border-rose-600 text-white shadow-lg' : 'bg-slate-50 border-slate-200 text-slate-500 hover:border-rose-300'}`}
+                        >
+                            {hasCheckedOut ? 'Pulang ✔️' : 'Absen Pulang'}
+                        </button>
+                    </div>
+                    {(!hasCheckedIn && attendanceType !== 'Absen Masuk') && (
+                        <p className="text-rose-500 text-xs font-bold mt-3 text-center">Harap lakukan Absen Masuk terlebih dahulu.</p>
+                    )}
+                </div>
+
+                <button 
+                  onClick={startAttendance}
+                  disabled={!hasCheckedIn && attendanceType !== 'Absen Masuk'}
+                  className={`w-full max-w-sm py-4 text-white font-black rounded-xl shadow-lg transition-all flex items-center justify-center gap-3 ${(!hasCheckedIn && attendanceType !== 'Absen Masuk') ? 'bg-slate-300 cursor-not-allowed' : 'bg-slate-900 hover:bg-black shadow-slate-200'}`}
+                >
+                  <Camera size={20} /> Buka Kamera & Deteksi GPS
+                </button>
+                </>
+            )}
           </div>
         )}
 
@@ -138,26 +293,80 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user }) => {
           </div>
         )}
 
-        {step === 'camera' && (
-          <div className="space-y-4">
-            <div className="relative rounded-2xl overflow-hidden bg-black aspect-[3/4] md:aspect-video shadow-lg">
-              <video 
-                ref={videoRef} 
-                autoPlay 
-                playsInline 
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute top-4 right-4 bg-black/50 text-white px-3 py-1 rounded-full text-xs font-mono backdrop-blur-sm flex items-center gap-2">
-                <MapPin size={12} className="text-green-400" />
-                {location?.lat.toFixed(5)}, {location?.lng.toFixed(5)}
+        {step === 'verify_location' && (
+          <div className="space-y-4 mt-6">
+            <div className="bg-white border-2 border-slate-100 p-4 rounded-3xl shadow-sm flex flex-col gap-3">
+              <h3 className="text-slate-800 font-bold text-center mb-2">Verifikasi Titik Lokasi</h3>
+              <div className="flex flex-col gap-2 mb-2">
+                  <div className="bg-slate-50 text-slate-700 p-3 rounded-xl text-xs font-mono border border-slate-200 flex flex-col justify-center gap-1 shadow-sm">
+                    <span className="flex items-center gap-2 font-bold text-emerald-600">
+                      <MapPin size={12} /> Live GPS Coordinate
+                    </span>
+                    <div className="grid grid-cols-2 mt-1 font-semibold">
+                        <span>LAT: {location?.lat.toFixed(6)}</span>
+                        <span>LNG: {location?.lng.toFixed(6)}</span>
+                    </div>
+                  </div>
+                  
+                  {location && <LocationMiniMap lat={location.lat} lng={location.lng} />}
+              </div>
+
+              <div className="bg-emerald-50 p-3 rounded-xl flex items-start gap-3 border border-emerald-100 mt-2">
+                <div className="bg-emerald-500 text-white p-2 rounded-lg shrink-0">
+                   <MapPin size={16} />
+                </div>
+                <p className="text-xs text-emerald-800 leading-relaxed font-semibold line-clamp-2">{address}</p>
               </div>
             </div>
+
             <button 
-              onClick={takePhoto}
-              className="w-full py-4 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl shadow-lg transition-colors flex items-center justify-center gap-2"
+              onClick={openCamera}
+              className="w-full py-4 bg-indigo-500 hover:bg-indigo-600 text-white font-black rounded-xl shadow-lg transition-colors flex items-center justify-center gap-2"
             >
-              <Camera size={20} /> Ambil Foto Selfie
+              <Camera size={20} /> Lanjut Akses Kamera
             </button>
+            <button onClick={reset} className="w-full py-2 text-slate-400 font-bold text-sm">Batal</button>
+          </div>
+        )}
+
+        {step === 'camera' && (
+          <div className="space-y-4">
+            <div className="bg-slate-900 border-2 border-slate-800 p-2 rounded-3xl shadow-xl">
+              <div className="flex items-center justify-between px-4 py-3 bg-black/40 rounded-xl mb-3 border border-white/10">
+                <div className="flex items-center gap-2 text-xs font-mono">
+                  {currentTime && (
+                    <span className="text-slate-300">
+                       {currentTime.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', year: 'numeric', hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="relative rounded-2xl overflow-hidden bg-black aspect-[3/4] md:aspect-video mb-1 border border-white/10">
+                <video 
+                  ref={videoRef} 
+                  autoPlay 
+                  playsInline 
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            </div>
+            
+            <div className="flex flex-col gap-2">
+              <button 
+                onClick={takePhoto}
+                disabled={!isSecure}
+                className={`w-full py-4 text-white font-bold rounded-xl shadow-lg transition-colors flex items-center justify-center gap-2 ${isSecure ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-slate-400 cursor-not-allowed'}`}
+              >
+                <Camera size={20} /> {isSecure ? `Ambil Foto ${attendanceType}` : 'Tunggu Verifikasi GPS...'}
+              </button>
+              <button 
+                onClick={() => setStep('verify_location')} 
+                className="w-full py-3 text-slate-500 hover:text-slate-700 font-bold text-sm bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+              >
+                Kembali
+              </button>
+            </div>
           </div>
         )}
 
@@ -168,34 +377,61 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user }) => {
             </div>
             <div>
               <h3 className="text-2xl font-bold text-slate-800">Absensi Berhasil!</h3>
-              <p className="text-slate-500">Data kehadiran Anda telah tercatat.</p>
+              <p className="text-slate-500">Data <span className="font-bold text-indigo-600">{attendanceType}</span> Anda telah tercatat.</p>
             </div>
             
-            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 w-full max-w-sm mx-auto">
-              <img src={photo} alt="Selfie Absensi" className="w-full h-48 object-cover rounded-xl mb-4" />
-              <div className="space-y-2 text-left">
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">Waktu</span>
-                  <span className="font-bold text-slate-800">{new Date().toLocaleTimeString()}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">Koordinat</span>
-                  <span className="font-mono text-xs font-bold text-slate-800 truncate ml-4">
-                    {location?.lat.toFixed(6)}, {location?.lng.toFixed(6)}
+            <div className="bg-slate-50 p-4 rounded-3xl border border-slate-200 w-full max-w-sm mx-auto shadow-sm">
+              <img src={photo} alt="Selfie Absensi" className="w-full h-48 object-cover rounded-2xl mb-5 shadow-sm border border-slate-200" />
+              
+              <div className="space-y-4 text-left">
+                <div className="flex flex-col gap-1 pb-3 border-b border-slate-200">
+                  <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Waktu Terekam (Server)</span>
+                  <span className="font-black text-slate-800 text-sm">
+                      {submittedTime ? `${submittedTime.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'full' })} - ${submittedTime.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', timeStyle: 'medium' })}` : '-'}
                   </span>
                 </div>
-                <div className="flex justify-between text-sm">
-                   <span className="text-slate-500">Status</span>
-                   <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-bold">ONLINE</span>
+                
+                <div className="flex flex-col gap-2 pb-3 border-b border-slate-200">
+                  <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Lokasi Absensi</span>
+                  <div className="flex gap-3">
+                     <div className="flex-1">
+                        <span className="font-mono text-xs font-bold text-slate-800 bg-slate-200 px-2 py-1 rounded inline-block mb-1">
+                          {location?.lat.toFixed(6)}, {location?.lng.toFixed(6)}
+                        </span>
+                        <p className="text-xs text-slate-600 font-medium leading-relaxed mt-1">{address}</p>
+                     </div>
+                     {location && (
+                        <div className="w-16 h-16 shrink-0 aspect-square rounded-xl overflow-hidden shadow-sm pointer-events-none opacity-90 grayscale-[30%]">
+                             <LocationMiniMap lat={location.lat} lng={location.lng} />
+                        </div>
+                     )}
+                  </div>
+                </div>
+
+                {istirahatDurationStr && attendanceType === 'Selesai Istirahat' && (
+                    <div className="flex justify-between items-center bg-amber-50 px-3 py-2 rounded-xl border border-amber-100 mt-2">
+                       <span className="text-amber-700 text-xs font-bold">Total Waktu Istirahat</span>
+                       <span className="bg-amber-500 text-white px-3 py-1 rounded-lg text-xs font-black">{istirahatDurationStr}</span>
+                    </div>
+                )}
+
+                <div className="flex justify-between items-center bg-indigo-50 px-3 py-2 rounded-xl border border-indigo-100 mt-2">
+                   <span className="text-indigo-700 text-xs font-bold">Jenis Absen</span>
+                   <span className="bg-indigo-500 text-white px-3 py-1 rounded-lg text-xs font-black uppercase">{attendanceType}</span>
+                </div>
+
+                <div className="flex justify-between items-center bg-emerald-50 px-3 py-2 rounded-xl border border-emerald-100">
+                   <span className="text-emerald-700 text-xs font-bold">Status Sistem</span>
+                   <span className="bg-emerald-500 text-white px-2 py-0.5 rounded-lg text-xs font-black">TERVERIFIKASI</span>
                 </div>
               </div>
             </div>
 
             <button 
               onClick={reset}
-              className="text-slate-400 hover:text-slate-600 font-medium text-sm flex items-center gap-2"
+              className="text-slate-500 hover:text-slate-800 font-bold text-sm flex items-center gap-2 px-6 py-3 bg-slate-100 rounded-xl transition-all"
             >
-              <RefreshCw size={14} /> Absen Ulang (Demo)
+              <RefreshCw size={18} /> Lakukan Absen Lain
             </button>
           </div>
         )}

@@ -60,16 +60,11 @@ import WargaProfileSection from './components/WargaProfileSection';
 import WargaSuratSection from './components/WargaSuratSection';
 import WargaMainDashboard from './components/WargaMainDashboard'; 
 import LoginPage from './components/LoginPage';
+import PPSUTaskInputSection from './components/PPSUTaskInputSection';
+import PPSUMyReportsSection from './components/PPSUMyReportsSection';
 
 // Updated Submenu Types
-type Submenu = 
-  | 'PPSU' 
-  | 'MONITORING' 
-  | 'MAP_PPSU' 
-  | 'ABSENSI' 
-  | 'STATS' 
-  | 'SETTINGS' 
-  | 'USER_MANAGEMENT';    
+type Submenu = string;
 
 const loadData = <T,>(key: string, fallback: T): T => {
   try {
@@ -240,14 +235,14 @@ const App: React.FC = () => {
 
   const handleLoginSuccess = (user: User) => {
     setCurrentUser(user);
-    setActiveSubmenu('PPSU');
+    setActiveSubmenu(user.role === 'PPSU' ? 'PPSU' : 'DASHBOARD');
   };
 
   const confirmLogout = () => {
     setCurrentUser(null);
     setIsLogoutModalOpen(false); // Close modal
     // Reset navigation state so subsequent logins start fresh
-    setActiveSubmenu('PPSU');
+    setActiveSubmenu('DASHBOARD');
     setIsSidebarOpen(true);
     setIsMobileMenuOpen(false);
   };
@@ -258,7 +253,7 @@ const App: React.FC = () => {
 
   const switchUser = (user: User) => {
     setCurrentUser(user);
-    setActiveSubmenu('PPSU');
+    setActiveSubmenu(user.role === 'PPSU' ? 'PPSU' : 'DASHBOARD');
     setIsUserSelectorOpen(false);
   };
 
@@ -292,6 +287,8 @@ const App: React.FC = () => {
     switch (activeSubmenu) {
       case 'PPSU':
         return <PPSUSection user={currentUser} staffList={staffList} setStaffList={setStaffList} />;
+      case 'INPUT_TUGAS':
+        return <PPSUTaskInputSection user={currentUser} reports={reports} setReports={setReports} />;
       case 'MONITORING':
         return <DutySection user={currentUser} reports={reports} setReports={setReports} staffList={staffList} setStaffList={setStaffList} />;
       case 'MAP_PPSU':
@@ -299,6 +296,9 @@ const App: React.FC = () => {
       case 'ABSENSI':
         return <AttendanceSection user={currentUser} />;
       case 'STATS':
+        if (currentUser.role === 'PPSU') {
+           return <PPSUMyReportsSection user={currentUser} reports={reports} />;
+        }
         return <StatisticsSection />;
       case 'SETTINGS':
         return <SettingsSection settings={settings} onUpdate={setSettings} />;
@@ -314,11 +314,10 @@ const App: React.FC = () => {
     {
       title: 'MENU PASUKAN ORANGE (PPSU)',
       items: [
-        { id: 'PPSU', label: 'PPSU', icon: <Users size={20} />, color: 'bg-orange-500' },
-        { id: 'MONITORING', label: 'Anggota PPSU Bertugas', icon: <Activity size={20} />, color: 'bg-indigo-500' },
-        { id: 'STATS', label: 'Statistik Tugas', icon: <BarChart3 size={20} />, color: 'bg-green-500' },
-        { id: 'MAP_PPSU', label: 'Map PPSU', icon: <MapPinned size={20} />, color: 'bg-orange-600' },
-        { id: 'ABSENSI', label: 'Absen PPSU', icon: <Camera size={20} />, color: 'bg-purple-500' },
+        { id: 'PPSU', label: 'Dashboard', icon: <Home size={20} />, color: 'bg-orange-500' },
+        { id: 'ABSENSI', label: 'Absen Saya', icon: <Camera size={20} />, color: 'bg-purple-500' },
+        { id: 'INPUT_TUGAS', label: 'Tugas', icon: <ClipboardList size={20} />, color: 'bg-indigo-500' },
+        { id: 'STATS', label: 'Laporan Saya', icon: <FileText size={20} />, color: 'bg-green-500' },
       ]
     },
     {
@@ -430,9 +429,94 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden">
-      
+    <>
       {/* CUSTOM LOGOUT CONFIRMATION MODAL */}
+      {isLogoutModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-sm rounded-[2rem] p-8 shadow-2xl animate-in zoom-in-95 relative z-[10000]">
+             <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-6 mx-auto border-4 border-white shadow-md">
+                <Power size={32} />
+             </div>
+             <h3 className="text-xl font-black text-center text-slate-800 mb-2">Konfirmasi Keluar</h3>
+             <p className="text-sm text-slate-500 text-center mb-8 font-medium">Apakah Anda yakin ingin mengakhiri sesi ini?</p>
+             <div className="flex gap-3">
+                <button 
+                  onClick={() => setIsLogoutModalOpen(false)} 
+                  className="flex-1 py-3.5 text-sm font-bold text-slate-500 hover:bg-slate-50 rounded-xl transition-colors"
+                >
+                  Batal
+                </button>
+                <button 
+                  onClick={confirmLogout} 
+                  className="flex-1 py-3.5 bg-red-600 text-white text-sm font-black rounded-xl hover:bg-red-700 shadow-lg shadow-red-200 transition-all transform active:scale-95"
+                >
+                  Keluar
+                </button>
+             </div>
+          </div>
+        </div>
+      )}
+
+      {currentUser.role === 'PPSU' ? (
+        // ==========================================
+        //  MOBILE APP LAYOUT (EXCLUSIVE FOR PPSU)
+        // ==========================================
+        <div className="flex h-screen bg-slate-900 items-center justify-center overflow-hidden">
+          {/* Phone Frame Container */}
+          <div className="w-full h-full sm:w-[420px] sm:h-[850px] sm:max-h-[95vh] bg-slate-50 sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col relative sm:border-[8px] border-slate-800 ring-1 ring-white/10 mx-auto">
+            
+            {/* Mobile Header */}
+            <div className="h-16 bg-white border-b border-slate-100 flex items-center justify-between px-6 shrink-0 z-40 shadow-sm relative pt-safe">
+                <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-orange-100 text-orange-600 rounded-lg flex items-center justify-center">
+                        <span className="font-black text-lg">P</span>
+                    </div>
+                    <div>
+                        <h2 className="font-black text-slate-800 text-sm leading-tight">{allMenuItems.find(m => m.id === activeSubmenu)?.label || 'Aplikasi PSSU'}</h2>
+                        <p className="text-[10px] text-slate-400 font-bold tracking-widest uppercase">Petugas Lapangan</p>
+                    </div>
+                </div>
+                <button onClick={handleLogoutClick} className="w-10 h-10 rounded-full bg-slate-50 text-slate-400 flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-colors">
+                    <LogOut size={16} />
+                </button>
+            </div>
+
+            {/* Scrollable Content Area */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar bg-slate-50/50 pb-20">
+               <div className="p-4 sm:p-5 min-h-full">
+                  {renderContent()}
+               </div>
+            </div>
+
+            {/* Bottom Navigation */}
+            <div className="absolute bottom-0 w-full bg-white border-t border-slate-100 flex justify-around items-center h-16 sm:h-20 pb-safe shadow-[0_-10px_20px_rgba(0,0,0,0.02)] z-50">
+               {allMenuItems.filter(item => ['PPSU', 'ABSENSI', 'INPUT_TUGAS', 'STATS'].includes(item.id)).map(item => {
+                   const isActive = activeSubmenu === item.id;
+                   return (
+                       <button 
+                           key={item.id}
+                           onClick={() => setActiveSubmenu(item.id)} 
+                           className={`flex flex-col items-center justify-center w-full h-full gap-1 transition-all ${isActive ? 'text-orange-500' : 'text-slate-400 hover:text-slate-600'}`}
+                       >
+                          <div className={`p-1.5 rounded-xl transition-all ${isActive ? 'bg-orange-50' : 'bg-transparent'}`}>
+                             {item.icon}
+                          </div>
+                          <span className={`text-[9px] font-black tracking-wide ${isActive ? 'opacity-100' : 'opacity-70'}`}>{item.label}</span>
+                       </button>
+                   );
+               })}
+            </div>
+            {/* SafeArea Notch Simulator on Desktop */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-slate-800 rounded-b-3xl hidden sm:block z-[60]"></div>
+          </div>
+        </div>
+      ) : (
+        // ==========================================
+        //  WEB DASHBOARD LAYOUT (ADMIN/STAFF/PIMPINAN)
+        // ==========================================
+        <div className="flex h-screen bg-slate-50 overflow-hidden">
+          
+          {/* User Selector Modal (Only kept in Web layout for debugging and role switching) */}
       {isLogoutModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white w-full max-w-sm rounded-[2rem] p-8 shadow-2xl animate-in zoom-in-95">
@@ -520,7 +604,6 @@ const App: React.FC = () => {
                              <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg border uppercase tracking-widest ${
                                 user.role === 'Administrator' ? 'bg-rose-50 text-rose-600 border-rose-100' :
                                 user.role === 'Pimpinan' ? 'bg-purple-50 text-purple-600 border-purple-100' :
-                                user.role === 'Warga' ? 'bg-teal-50 text-teal-600 border-teal-100' :
                                 user.role === 'PPSU' ? 'bg-orange-50 text-orange-600 border-orange-100' :
                                 'bg-slate-100 text-slate-600 border-slate-200'
                              }`}>
@@ -579,6 +662,8 @@ const App: React.FC = () => {
         </div>
       </main>
     </div>
+    )}
+    </>
   );
 };
 
