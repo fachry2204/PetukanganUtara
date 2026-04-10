@@ -69,6 +69,7 @@ export enum ReportStatus {
   ARRIVED = 'Petugas Sampai Lokasi',
   IN_PROGRESS = 'Sedang Dikerjakan',
   VERIFICATION = 'Menunggu Verifikasi',
+  VERIFIED = 'Verified',
   REVISION = 'Revisi Laporan',
   COMPLETED = 'Laporan Selesai',
   REJECTED = 'Ditolak'
@@ -105,6 +106,7 @@ export interface Report {
   assignedStaffIds?: string[];
   rejectionReason?: string;
   estimationTime?: string;
+  verifiedBy?: string;
 }
 
 export interface Staff {

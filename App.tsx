@@ -43,7 +43,9 @@ import {
   UserCheck,
   HardHat,
   Star,
-  Power
+  Power,
+  CheckCircle2,
+  AlertTriangle
 } from 'lucide-react';
 import { User, SystemSettings, Report, Staff, Citizen, ServiceRequest, Role, ServiceRating } from './types';
 import { MOCK_USERS, MOCK_REPORTS, MOCK_STAFF, MOCK_CITIZENS, MOCK_SERVICE_REQUESTS } from './constants';
@@ -238,6 +240,10 @@ const App: React.FC = () => {
     setActiveSubmenu(user.role === 'PPSU' ? 'PPSU' : 'DASHBOARD');
   };
 
+  const [isSosActive, setIsSosActive] = useState(false);
+  const [isSosSent, setIsSosSent] = useState(false);
+  const [isSosLoading, setIsSosLoading] = useState(false);
+
   const confirmLogout = () => {
     setCurrentUser(null);
     setIsLogoutModalOpen(false); // Close modal
@@ -245,6 +251,24 @@ const App: React.FC = () => {
     setActiveSubmenu('DASHBOARD');
     setIsSidebarOpen(true);
     setIsMobileMenuOpen(false);
+  };
+
+  const handleSosClick = () => {
+      setIsSosActive(true);
+  };
+
+  const sendSosSignal = () => {
+      setIsSosLoading(true);
+      setTimeout(() => {
+          setIsSosLoading(false);
+          setIsSosSent(true);
+          // Simulate sending to Pimpinan / Admin via localStorage
+          localStorage.setItem(`sos_alert_${Date.now()}`, JSON.stringify({ nik: currentUser?.nik, name: currentUser?.name, time: new Date().toISOString() }));
+          setTimeout(() => {
+              setIsSosActive(false);
+              setIsSosSent(false);
+          }, 3000);
+      }, 1500);
   };
 
   const handleLogoutClick = () => {
@@ -490,19 +514,31 @@ const App: React.FC = () => {
 
             {/* Bottom Navigation */}
             <div className="absolute bottom-0 w-full bg-white border-t border-slate-100 flex justify-around items-center h-16 sm:h-20 pb-safe shadow-[0_-10px_20px_rgba(0,0,0,0.02)] z-50">
-               {allMenuItems.filter(item => ['PPSU', 'ABSENSI', 'INPUT_TUGAS', 'STATS'].includes(item.id)).map(item => {
+               {allMenuItems.filter(item => ['PPSU', 'ABSENSI', 'INPUT_TUGAS', 'STATS'].includes(item.id)).map((item, idx) => {
                    const isActive = activeSubmenu === item.id;
                    return (
-                       <button 
-                           key={item.id}
-                           onClick={() => setActiveSubmenu(item.id)} 
-                           className={`flex flex-col items-center justify-center w-full h-full gap-1 transition-all ${isActive ? 'text-orange-500' : 'text-slate-400 hover:text-slate-600'}`}
-                       >
-                          <div className={`p-1.5 rounded-xl transition-all ${isActive ? 'bg-orange-50' : 'bg-transparent'}`}>
-                             {item.icon}
-                          </div>
-                          <span className={`text-[9px] font-black tracking-wide ${isActive ? 'opacity-100' : 'opacity-70'}`}>{item.label}</span>
-                       </button>
+                       <React.Fragment key={item.id}>
+                         {idx === 2 && (
+                             <button 
+                                onClick={handleSosClick}
+                                className="flex flex-col items-center justify-center -mt-8 z-10 hover:scale-105 transition-transform shrink-0"
+                             >
+                                <div className="w-14 h-14 sm:w-16 sm:h-16 bg-red-600 text-white rounded-2xl shadow-xl shadow-red-600/30 flex items-center justify-center relative overflow-hidden">
+                                    <div className="absolute inset-0 rounded-2xl bg-red-500 animate-pulse opacity-30"></div>
+                                    <span className="font-black text-lg sm:text-xl tracking-widest relative z-10 text-white drop-shadow-md">SOS</span>
+                                </div>
+                             </button>
+                         )}
+                         <button 
+                             onClick={() => setActiveSubmenu(item.id)} 
+                             className={`flex flex-col items-center justify-center flex-1 h-full gap-1 transition-all ${isActive ? 'text-orange-500' : 'text-slate-400 hover:text-slate-600'}`}
+                         >
+                            <div className={`p-1.5 rounded-xl transition-all ${isActive ? 'bg-orange-50' : 'bg-transparent'}`}>
+                               {item.icon}
+                            </div>
+                            <span className={`text-[9px] font-black tracking-wide ${isActive ? 'opacity-100' : 'opacity-70'}`}>{item.label}</span>
+                         </button>
+                       </React.Fragment>
                    );
                })}
             </div>
@@ -663,6 +699,45 @@ const App: React.FC = () => {
       </main>
     </div>
     )}
+
+    {/* SOS Emergency Modal */}
+    {isSosActive && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/90 backdrop-blur-md p-6">
+           <div className="bg-red-600 w-full max-w-sm rounded-[2rem] p-8 flex flex-col items-center text-center shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-200">
+               <div className="absolute inset-0 bg-red-500 animate-pulse mix-blend-screen opacity-50"></div>
+               {isSosSent ? (
+                   <>
+                       <div className="w-20 h-20 rounded-full bg-white text-emerald-500 flex items-center justify-center mb-6 relative z-10 animate-bounce">
+                           <CheckCircle2 size={40} />
+                       </div>
+                       <h2 className="text-2xl font-black text-white relative z-10 mb-2 leading-tight">Sinyal Bahaya<br/>Telah Dikirim!</h2>
+                       <p className="text-red-100 relative z-10 font-medium">Tim Pusat, Admin, dan Pimpinan telah menerima lokasi Anda dan tim bantuan segera dikerahkan.</p>
+                   </>
+               ) : isSosLoading ? (
+                   <>
+                       <div className="w-20 h-20 rounded-full border-4 border-red-400 border-t-white animate-spin mb-6 relative z-10"></div>
+                       <h2 className="text-2xl font-black text-white relative z-10 mb-2">Mengirim Sinyal...</h2>
+                       <p className="text-red-100 relative z-10 font-medium">Mendapatkan lokasi akurat GPS Anda saat ini...</p>
+                   </>
+               ) : (
+                   <>
+                       <div className="w-24 h-24 rounded-full bg-white text-red-600 flex items-center justify-center mb-6 relative z-10">
+                           <AlertTriangle size={48} className="animate-pulse" />
+                       </div>
+                       <h2 className="text-2xl font-black text-white relative z-10 mb-3 leading-tight tracking-tight">KIRIM SINYAL<br/>BAHAYA (SOS)?</h2>
+                       <p className="text-red-100 relative z-10 font-medium text-sm mb-8 leading-relaxed">
+                          Gunakan fitur ini <b className="text-white">HANYA</b> dalam keadaan darurat atau bahaya saat bertugas di lapangan. Koordinat akurat Anda saat ini akan di-broadcast seketika.
+                       </p>
+                       <div className="flex gap-3 w-full relative z-10">
+                           <button onClick={() => setIsSosActive(false)} className="flex-1 py-3.5 bg-red-700 hover:bg-red-800 text-white font-black rounded-xl transition-all">BATAL</button>
+                           <button onClick={sendSosSignal} className="flex-1 py-3.5 bg-white text-red-600 hover:bg-slate-100 font-black rounded-xl transition-all shadow-xl shadow-red-900/50">KIRIM SOS</button>
+                       </div>
+                   </>
+               )}
+           </div>
+        </div>
+    )}
+
     </>
   );
 };

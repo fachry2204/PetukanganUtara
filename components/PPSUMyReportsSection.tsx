@@ -32,10 +32,11 @@ const PPSUMyReportsSection: React.FC<PPSUMyReportsSectionProps> = ({ user, repor
              {stageData.lat && stageData.lng && (
                  <button 
                      onClick={(e) => { e.stopPropagation(); setFullscreenMap({ lat: parseFloat(stageData.lat), lng: parseFloat(stageData.lng) }) }}
-                     className={`w-12 h-12 rounded-lg border-2 ${colorClass} overflow-hidden bg-slate-100 flex items-center justify-center relative group opacity-90 transition-transform hover:scale-105 shadow-sm`}
+                     className={`w-12 h-12 rounded-lg border-2 ${colorClass} flex flex-col items-center justify-center bg-white text-slate-500 group transition-transform hover:scale-105 shadow-sm`}
+                     title="Lihat Peta"
                  >
-                     <div className="absolute inset-0 z-10 pointer-events-none ring-inset ring-1 ring-black/5" />
-                     <LocationMiniMap lat={parseFloat(stageData.lat)} lng={parseFloat(stageData.lng)} />
+                     <MapPin size={18} className="mb-0.5 group-hover:text-emerald-500 transition-colors" />
+                     <span className="text-[8px] font-black uppercase tracking-widest leading-none">MAP</span>
                  </button>
              )}
          </div>
@@ -201,9 +202,20 @@ const PPSUMyReportsSection: React.FC<PPSUMyReportsSectionProps> = ({ user, repor
                     </div>
                   )}
                   <div className="flex-1 flex flex-col justify-center min-w-0">
-                      <p className="text-[10px] font-bold text-orange-500 uppercase flex items-center gap-1 mb-1">
-                          <CheckCircle2 size={12} /> {group.tasks.length} Laporan Ditemukan
-                      </p>
+                      {group.latestLog.status === 'Verified' ? (
+                          <div className="flex items-center gap-1 mb-1.5 flex-wrap">
+                              <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest flex items-center gap-1">
+                                 <CheckCircle2 size={10} /> Verified
+                              </span>
+                              {group.latestLog.verifiedBy && <span className="text-[9px] text-slate-400 font-bold uppercase">(Oleh {group.latestLog.verifiedBy})</span>}
+                          </div>
+                      ) : (
+                          <div className="flex items-center gap-1 mb-1.5 flex-wrap">
+                              <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest flex items-center gap-1">
+                                 <Clock size={10} /> Pending
+                              </span>
+                          </div>
+                      )}
                       <h3 className="font-bold text-slate-800 line-clamp-2 leading-tight text-sm mb-2">{group.title}</h3>
                       <p className="text-[11px] font-medium text-slate-500 flex items-center gap-1 truncate">
                           <Clock size={12} /> {new Date(group.latestLog.timestamp).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}
@@ -258,13 +270,13 @@ const PPSUMyReportsSection: React.FC<PPSUMyReportsSectionProps> = ({ user, repor
                          <CheckCircle2 size={20} />
                       </div>
                       <div>
-                          <div className="flex items-center gap-2">
-                             <p className={`font-bold ${selectedAttendance.hasSelesaiIstirahat ? 'text-cyan-900' : 'text-slate-500'}`}>Selesai Istirahat</p>
-                             {selectedAttendance.durasiIstirahat && <span className="bg-cyan-100 text-cyan-800 text-[10px] px-2 py-0.5 rounded-md font-bold">{selectedAttendance.durasiIstirahat}</span>}
+                          <p className={`font-bold ${selectedAttendance.hasSelesaiIstirahat ? 'text-cyan-900' : 'text-slate-500'} mb-0.5`}>Selesai Istirahat</p>
+                          <div className="flex flex-col items-start gap-1">
+                              <p className={`text-xs ${selectedAttendance.timeSelesaiIstirahat ? 'text-cyan-600 font-bold' : 'text-slate-500'}`}>
+                                  {selectedAttendance.timeSelesaiIstirahat ? new Date(selectedAttendance.timeSelesaiIstirahat).toLocaleTimeString('id-ID', { timeStyle: 'short' }) : 'Belum dilakukan'}
+                              </p>
+                              {selectedAttendance.durasiIstirahat && <span className="bg-cyan-100 text-cyan-800 text-[10px] px-2 py-0.5 rounded-md font-bold inline-block leading-tight">{selectedAttendance.durasiIstirahat}</span>}
                           </div>
-                          <p className={`text-xs ${selectedAttendance.timeSelesaiIstirahat ? 'text-cyan-600 font-bold' : 'text-slate-500'}`}>
-                              {selectedAttendance.timeSelesaiIstirahat ? new Date(selectedAttendance.timeSelesaiIstirahat).toLocaleTimeString('id-ID', { timeStyle: 'short' }) : 'Belum dilakukan'}
-                          </p>
                       </div>
                       {renderAttendanceThumbnails(selectedAttendance.dataSelesaiIstirahat, 'Selesai Istirahat', 'border-cyan-200 hover:border-cyan-400')}
                   </div>
@@ -341,13 +353,30 @@ const PPSUMyReportsSection: React.FC<PPSUMyReportsSectionProps> = ({ user, repor
                           <p className={`text-sm font-black uppercase tracking-widest mb-3 ${stage.color}`}>{stage.type}</p>
                           {stage.data ? (
                              <div className="flex flex-col gap-3">
-                                <img src={stage.data.photoUrl} alt={stage.type} className="w-full h-48 object-cover rounded-xl border border-slate-100" />
+                                <div 
+                                    className="w-full h-48 rounded-xl border border-slate-100 overflow-hidden relative group cursor-pointer"
+                                    onClick={() => setFullscreenImage(stage.data.photoUrl)}
+                                >
+                                    <img src={stage.data.photoUrl} alt={stage.type} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                                    <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                         <Camera size={32} className="text-white drop-shadow-lg" />
+                                    </div>
+                                </div>
                                 <div className="flex flex-col flex-1 justify-center min-w-0 bg-slate-50 p-3 rounded-xl border border-slate-100">
                                    <div className="flex items-center gap-2 text-slate-600 text-xs font-bold mb-1.5">
                                       <Clock size={14} className="text-slate-400" /> {new Date(stage.data.timestamp).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}
                                    </div>
-                                   <p className="text-[11px] text-slate-500 font-medium mb-1">GPS: {stage.data.latitude?.toFixed(6)}, {stage.data.longitude?.toFixed(6)}</p>
-                                   <p className="text-[10px] text-slate-400 font-medium leading-tight whitespace-normal">{stage.data.location}</p>
+                                   <p className="text-[11px] text-slate-500 font-medium mb-1.5">GPS: {stage.data.latitude?.toFixed(6)}, {stage.data.longitude?.toFixed(6)}</p>
+                                   <div className="flex items-start gap-1.5 mt-0.5">
+                                      <button 
+                                          onClick={() => setFullscreenMap({ lat: stage.data.latitude, lng: stage.data.longitude })}
+                                          className="p-1.5 rounded-md bg-emerald-100 text-emerald-600 hover:bg-emerald-200 hover:scale-105 transition-all shrink-0 shadow-sm border border-emerald-200"
+                                          title="Lihat di Peta"
+                                      >
+                                          <MapPin size={12} />
+                                      </button>
+                                      <p className="text-[10px] text-slate-500 font-medium leading-tight whitespace-normal pt-1">{stage.data.location}</p>
+                                   </div>
                                 </div>
                              </div>
                           ) : (
@@ -364,15 +393,27 @@ const PPSUMyReportsSection: React.FC<PPSUMyReportsSectionProps> = ({ user, repor
 
        {/* Fullscreen Map Preview */}
        {fullscreenMap && (
-         <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-[200] flex justify-center items-center p-4 animate-in fade-in duration-200" onClick={() => setFullscreenMap(null)}>
-            <div className="bg-white w-full max-w-2xl h-[60vh] rounded-[2rem] overflow-hidden shadow-2xl relative" onClick={e => e.stopPropagation()}>
-               <button onClick={() => setFullscreenMap(null)} className="absolute top-4 right-4 p-2 bg-black/50 text-white hover:bg-black/70 rounded-full transition-colors z-10 backdrop-blur-md border border-white/20 shadow-lg">
-                   <X size={20} />
-               </button>
-               <div className="absolute top-4 left-4 bg-emerald-500/90 text-white px-3 py-1.5 rounded-xl font-black text-xs uppercase shadow-lg backdrop-blur-md border border-emerald-400/50 z-10">
-                   {fullscreenMap.lat.toFixed(6)}, {fullscreenMap.lng.toFixed(6)}
+         <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-[200] flex justify-center items-center p-4 sm:p-6 animate-in fade-in duration-200" onClick={() => setFullscreenMap(null)}>
+            <div className="bg-white w-full max-w-3xl h-[70vh] rounded-[2rem] overflow-hidden shadow-2xl relative flex flex-col" onClick={e => e.stopPropagation()}>
+               <div className="flex items-center gap-4 p-5 border-b border-slate-100 bg-white z-10 shrink-0 shadow-sm relative">
+                  <div className="w-12 h-12 rounded-full bg-orange-100 text-orange-500 flex items-center justify-center shrink-0">
+                     <MapPin size={22} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                     <h3 className="font-black text-slate-800 text-xl leading-tight">Detail Lokasi GPS</h3>
+                     <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mt-1 truncate">
+                        LAT: {fullscreenMap.lat.toFixed(6)} <span className="mx-1.5 text-slate-300">|</span> LNG: {fullscreenMap.lng.toFixed(6)}
+                     </p>
+                  </div>
+                  <button onClick={() => setFullscreenMap(null)} className="p-2.5 bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-800 rounded-full transition-colors shrink-0 border border-slate-100 shadow-sm">
+                      <X size={20} />
+                  </button>
                </div>
-               <LocationMiniMap lat={fullscreenMap.lat} lng={fullscreenMap.lng} />
+               <div className="flex-1 relative bg-slate-50">
+                  <div className="absolute inset-0">
+                     <LocationMiniMap lat={fullscreenMap.lat} lng={fullscreenMap.lng} />
+                  </div>
+               </div>
             </div>
          </div>
        )}
