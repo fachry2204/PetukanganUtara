@@ -1,0 +1,8 @@
+{
+  "name": "Petukangan Utara",
+  "description": "Petukangan Utara",
+  "requestFramePermissions": [
+    "geolocation",
+    "camera"
+  ]
+}
