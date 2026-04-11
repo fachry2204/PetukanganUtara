@@ -53,7 +53,9 @@ export enum DutyStatus {
   ONLINE = 'Online',
   BERTUGAS = 'Bertugas',
   STANDBY = 'Standby',
-  OFFLINE = 'Offline'
+  OFFLINE = 'Offline',
+  ISTIRAHAT = 'Istirahat',
+  BAHAYA = 'Dalam Bahaya'
 }
 
 export enum TaskStatus {
@@ -69,6 +71,7 @@ export enum ReportStatus {
   ARRIVED = 'Petugas Sampai Lokasi',
   IN_PROGRESS = 'Sedang Dikerjakan',
   VERIFICATION = 'Menunggu Verifikasi',
+  VERIFIED = 'Verified',
   REVISION = 'Revisi Laporan',
   COMPLETED = 'Laporan Selesai',
   REJECTED = 'Ditolak'
@@ -105,6 +108,7 @@ export interface Report {
   assignedStaffIds?: string[];
   rejectionReason?: string;
   estimationTime?: string;
+  verifiedBy?: string;
 }
 
 export interface Staff {
@@ -235,4 +239,29 @@ export interface ServiceRequest {
   signedLetterUrl?: string; 
   verificationCode?: string; 
   logs: ServiceLog[];
+}
+
+export interface Announcement {
+  id: string;
+  title: string;
+  content: string;
+  date: string;
+  authorName: string;
+  targetRole?: Role | 'ALL';
+  targetUserId?: string;
+}
+
+export type AttendanceType = 'Absen Masuk' | 'Istirahat' | 'Selesai Istirahat' | 'Absen Pulang';
+
+export interface AttendanceRecord {
+  id: string;
+  userId: string;
+  userNik: string;
+  userName: string;
+  type: AttendanceType;
+  timestamp: string;
+  latitude: number;
+  longitude: number;
+  address: string;
+  photo: string;
 }

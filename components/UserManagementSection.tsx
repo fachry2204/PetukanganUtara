@@ -26,9 +26,9 @@ import {
   UsersRound,
   MoreHorizontal
 } from 'lucide-react';
-import { MOCK_STAFF } from '../constants';
 import { User, Role } from '../types';
 import AdminVerificationModal from './AdminVerificationModal';
+import { apiService } from '../services/api';
 
 const ROLES: Role[] = [
   'Administrator', 
@@ -164,32 +164,39 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({ users, se
     setPendingAction({ type: 'Delete', user });
   };
 
-  const onVerificationSuccess = () => {
+  const onVerificationSuccess = async () => {
     if (!pendingAction) return;
     const { type, user } = pendingAction;
     setPendingAction(null);
 
-    if (type === 'Reset Password') {
-      setUsers(prev => prev.map(u => u.id === user.id ? { ...u, password: user.nik } : u));
-      alert(`Berhasil! Password untuk ${user.username} telah direset menjadi NIK (${user.nik}).`);
-    } else if (type === 'Delete') {
-      setUsers(prev => prev.filter(u => u.id !== user.id));
-      alert(`Berhasil! User ${user.username} telah dihapus dari sistem.`);
-    } else if (type === 'Edit') {
-      setEditingUser(user);
-      setFormData({ 
-        name: user.name || '',
-        username: user.username, 
-        email: user.email || '',
-        nik: user.nik || '', 
-        password: '', 
-        role: user.role 
-      });
-      setIsFormModalOpen(true);
+    try {
+      if (type === 'Reset Password') {
+          const updated = { ...user, password: user.nik };
+          await apiService.updateUser(updated);
+          setUsers(prev => prev.map(u => u.id === user.id ? updated : u));
+          alert(`Berhasil! Password untuk ${user.username} telah direset menjadi NIK (${user.nik}).`);
+      } else if (type === 'Delete') {
+          await apiService.deleteUser(user.id);
+          setUsers(prev => prev.filter(u => u.id !== user.id));
+          alert(`Berhasil! User ${user.username} telah dihapus dari sistem.`);
+      } else if (type === 'Edit') {
+          setEditingUser(user);
+          setFormData({ 
+            name: user.name || '',
+            username: user.username, 
+            email: user.email || '',
+            nik: user.nik || '', 
+            password: '', 
+            role: user.role 
+          });
+          setIsFormModalOpen(true);
+      }
+    } catch (error) {
+       console.error("User action failed:", error);
     }
   };
 
-  const handleSubmitUserForm = (e: React.FormEvent) => {
+  const handleSubmitUserForm = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.username && !formData.nik) {
         alert("Mohon isi Username atau NIK sebagai identitas login.");
@@ -197,11 +204,10 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({ users, se
     }
     const nameToUse = formData.name || formData.username;
 
-    if (editingUser) {
-      setUsers(prev => prev.map(u => {
-        if (u.id === editingUser.id) {
+    try {
+      if (editingUser) {
           const updatedUser = {
-            ...u,
+            ...editingUser,
             name: formData.name,
             username: formData.username,
             email: formData.email || undefined,
@@ -212,26 +218,28 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({ users, se
           if (formData.password && formData.password.trim() !== '') {
             updatedUser.password = formData.password;
           }
-          return updatedUser;
-        }
-        return u;
-      }));
-      alert('Data user berhasil diperbarui.');
-    } else {
-      const newUser: User = {
-        id: `USR-${Date.now()}`,
-        name: formData.name,
-        username: formData.username,
-        email: formData.email || undefined,
-        nik: formData.nik,
-        role: formData.role,
-        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(nameToUse)}&background=random`,
-        password: formData.password
-      };
-      setUsers(prev => [...prev, newUser]);
-      alert('User baru berhasil ditambahkan.');
+          await apiService.updateUser(updatedUser);
+          setUsers(prev => prev.map(u => u.id === editingUser.id ? updatedUser : u));
+          alert('Data user berhasil diperbarui.');
+      } else {
+          const newUser: User = {
+            id: `USR-${Date.now()}`,
+            name: formData.name,
+            username: formData.username,
+            email: formData.email || undefined,
+            nik: formData.nik,
+            role: formData.role,
+            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(nameToUse)}&background=random`,
+            password: formData.password
+          };
+          await apiService.createUser(newUser);
+          setUsers(prev => [...prev, newUser]);
+          alert('User baru berhasil ditambahkan.');
+      }
+      setIsFormModalOpen(false);
+    } catch (error) {
+       console.error("Failed to save user:", error);
     }
-    setIsFormModalOpen(false);
   };
 
   const tabs: {id: CategoryTab, label: string, icon: any}[] = [
