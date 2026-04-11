@@ -1,4 +1,4 @@
-import { TugasPPSU, Citizen, Staff, ServiceRequest, User } from '../types';
+import { TugasPPSU, Staff, User } from '../types';
 
 // Konfigurasi URL Backend
 // Gunakan environment variable VITE_API_URL jika ada (saat di hosting), jika tidak gunakan localhost
