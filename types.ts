@@ -54,7 +54,9 @@ export interface TugasPPSU {
   status: ReportStatus;
   timestamp: string;
   fotoSebelum?: string;
+  fotoSedang?: string;
   fotoSesudah?: string;
+  photoUrl?: string;
   staffId?: string;
   priority: 'High' | 'Medium' | 'Low';
   logs: TugasPPSULog[];
@@ -104,6 +106,8 @@ export interface SystemSettings {
   logo: string | null;
   loginBackground?: string | null;
   anjunganBackground?: string | null;
+  zonaList?: string[];
+  shiftConfig?: { name: string; start: string; end: string; }[];
 }
 
 export interface Announcement {

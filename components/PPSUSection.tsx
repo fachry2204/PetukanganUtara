@@ -21,7 +21,7 @@ import {
   CheckCircle2,
   AlertTriangle
 } from 'lucide-react';
-import { Staff, Gender, User } from '../types';
+import { Staff, Gender, User, Announcement } from '../types';
 import ProfileModal from './ProfileModal';
 import AddStaffModal from './AddStaffModal';
 import DeleteModal from './DeleteModal';
@@ -31,9 +31,11 @@ interface PPSUSectionProps {
   user: User;
   staffList: Staff[];
   setStaffList: React.Dispatch<React.SetStateAction<Staff[]>>;
+  attendanceRecords?: any[];
+  announcements?: Announcement[];
 }
 
-const PPSUSection: React.FC<PPSUSectionProps> = ({ user, staffList, setStaffList }) => {
+const PPSUSection: React.FC<PPSUSectionProps> = ({ user, staffList, setStaffList, attendanceRecords = [], announcements = [] }) => {
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
@@ -137,8 +139,19 @@ const PPSUSection: React.FC<PPSUSectionProps> = ({ user, staffList, setStaffList
 
   if (user.role === 'PPSU') {
     const todayDateStr = new Date().toISOString().split('T')[0];
-    const hasCheckedIn = localStorage.getItem(`attn_${user.nik}_${todayDateStr}_Absen Masuk`) === 'true';
-    const hasCheckedOut = localStorage.getItem(`attn_${user.nik}_${todayDateStr}_Absen Keluar`) === 'true';
+    
+    // Use LIVE data from attendanceRecords instead of just localStorage
+    const hasCheckedIn = attendanceRecords.some(r => 
+      r.userNik === user.nik && 
+      r.type === 'Absen Masuk' && 
+      r.timestamp.startsWith(todayDateStr)
+    );
+    
+    const hasCheckedOut = attendanceRecords.some(r => 
+      r.userNik === user.nik && 
+      r.type === 'Absen Pulang' && 
+      r.timestamp.startsWith(todayDateStr)
+    );
 
     return (
       <div className="space-y-6 max-w-3xl mx-auto pb-6">
@@ -181,19 +194,23 @@ const PPSUSection: React.FC<PPSUSectionProps> = ({ user, staffList, setStaffList
                <MessageCircle size={18} className="text-blue-500" /> Pengumuman Pimpinan
             </h3>
             <div className="space-y-4">
-               <div className="p-4 bg-blue-50 border border-blue-100 rounded-2xl">
-                  <div className="flex justify-between items-start mb-2">
-                     <h4 className="font-bold text-blue-800 text-sm">Fokus Titik Rawan Banjir</h4>
-                     <span className="text-[10px] uppercase font-bold text-blue-500 bg-blue-100 px-2 py-1 rounded-md">Penting</span>
-                  </div>
-                  <p className="text-sm text-blue-700 leading-relaxed font-medium">Mengingat curah hujan yang tinggi, harap seluruh personil fokus pada pembersihan saluran air (gorong-gorong) di sepanjang Jalan Ciledug Raya.</p>
-               </div>
-               
-               <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-1 h-full bg-orange-500"></div>
-                  <h4 className="font-bold text-slate-800 text-sm mb-1">Apel Pagi Gabungan</h4>
-                  <p className="text-sm text-slate-500 font-medium mb-2">Besok jam 07:00 WIB di Halaman Kantor Kelurahan Petukangan Utara. Harap hadir tepat waktu menggunakan seragam atribut lengkap.</p>
-               </div>
+               {announcements.length === 0 ? (
+                  <p className="text-center py-6 text-slate-400 font-bold italic text-sm">Belum ada pengumuman.</p>
+               ) : (
+                  announcements.slice(0, 3).map((ann, idx) => (
+                     <div key={ann.id} className={`p-4 rounded-2xl relative overflow-hidden ${idx === 0 ? 'bg-blue-50 border border-blue-100' : 'bg-slate-50 border border-slate-100'}`}>
+                        {idx !== 0 && <div className="absolute top-0 left-0 w-1 h-full bg-orange-500"></div>}
+                        <div className="flex justify-between items-start mb-1">
+                           <h4 className={`font-bold text-sm ${idx === 0 ? 'text-blue-800' : 'text-slate-800'}`}>{ann.title}</h4>
+                           {idx === 0 && <span className="text-[10px] uppercase font-bold text-blue-500 bg-blue-100 px-2 py-1 rounded-md">Penting</span>}
+                        </div>
+                        <p className={`text-sm leading-relaxed font-medium ${idx === 0 ? 'text-blue-700' : 'text-slate-500'}`}>{ann.content}</p>
+                        <p className={`text-[10px] font-bold uppercase tracking-wider mt-2 opacity-60 ${idx === 0 ? 'text-blue-600' : 'text-slate-400'}`}>
+                           {new Date(ann.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} • {ann.authorName}
+                        </p>
+                     </div>
+                  ))
+               )}
             </div>
          </div>
       </div>

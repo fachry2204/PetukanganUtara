@@ -55,7 +55,7 @@ const AnnouncementSection: React.FC<AnnouncementSectionProps> = ({ user, users, 
 
   return (
     <div className="space-y-6">
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 mb-6">
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-6">
         <h2 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-2">
           <Megaphone className="text-rose-500" /> Buat Pengumuman Baru
         </h2>

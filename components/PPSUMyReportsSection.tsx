@@ -1,14 +1,15 @@
 import React, { useState, useMemo } from 'react';
-import { User, TugasPPSU } from '../types';
+import { User, TugasPPSU, AttendanceRecord } from '../types';
 import { Calendar, ClipboardList, CheckCircle2, MapPin, Clock, FileText, ChevronRight, X, AlertTriangle, Camera, MapPinned } from 'lucide-react';
 import LocationMiniMap from './LocationMiniMap';
 
 interface PPSUMyReportsSectionProps {
   user: User;
   tugasList: TugasPPSU[];
+  attendanceRecords: AttendanceRecord[];
 }
 
-const PPSUMyReportsSection: React.FC<PPSUMyReportsSectionProps> = ({ user, tugasList }) => {
+const PPSUMyReportsSection: React.FC<PPSUMyReportsSectionProps> = ({ user, tugasList, attendanceRecords: rawAttendance }) => {
   const [activeTab, setActiveTab] = useState<'attendance' | 'tasks'>('attendance');
   const [selectedAttendance, setSelectedAttendance] = useState<any | null>(null);
   const [selectedTaskGroup, setSelectedTaskGroup] = useState<any | null>(null);
@@ -43,53 +44,67 @@ const PPSUMyReportsSection: React.FC<PPSUMyReportsSectionProps> = ({ user, tugas
       );
   };
 
-  // Group Attendance from localStorage
+  // Group Attendance from API Data
   const attendanceRecords = useMemo(() => {
-    const allKeys = Object.keys(localStorage);
-    const dates = Array.from(new Set(
-      allKeys.filter(k => k.startsWith(`attn_${user.nik}_`))
-             .map(k => k.split('_')[2])
-    )).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
-
-    return dates.map(date => {
-       const hasMasuk = localStorage.getItem(`attn_${user.nik}_${date}_Absen Masuk`) === 'true';
-       const hasIstirahat = localStorage.getItem(`attn_${user.nik}_${date}_Istirahat`) === 'true';
-       const hasSelesaiIstirahat = localStorage.getItem(`attn_${user.nik}_${date}_Selesai Istirahat`) === 'true';
-       const hasPulang = localStorage.getItem(`attn_${user.nik}_${date}_Absen Pulang`) === 'true';
-
-       const timeMasuk = localStorage.getItem(`attn_time_${user.nik}_${date}_Absen Masuk`);
-       const timeIstirahat = localStorage.getItem(`attn_time_${user.nik}_${date}_Istirahat`);
-       const timeSelesaiIstirahat = localStorage.getItem(`attn_time_${user.nik}_${date}_Selesai Istirahat`);
-       const timePulang = localStorage.getItem(`attn_time_${user.nik}_${date}_Absen Pulang`);
-
-       const istirahatTime = localStorage.getItem(`istirahatTime_${user.nik}_${date}`);
-       let durasiIstirahat = '';
-       if (hasSelesaiIstirahat && istirahatTime && timeSelesaiIstirahat) {
-            const startMs = parseInt(istirahatTime, 10);
-            const endMs = new Date(timeSelesaiIstirahat).getTime();
-            const diffMs = endMs - startMs;
-            const diffMinutes = Math.floor(diffMs / 60000);
-            durasiIstirahat = `${Math.floor(diffMinutes / 60)} Jam ${diffMinutes % 60} Menit`;
-       }
-       const getStageData = (stageName: string) => {
-           return {
-               photo: localStorage.getItem(`attn_photo_${user.nik}_${date}_${stageName}`),
-               lat: localStorage.getItem(`attn_lat_${user.nik}_${date}_${stageName}`),
-               lng: localStorage.getItem(`attn_lng_${user.nik}_${date}_${stageName}`)
-           };
-       };
-       
-       return {
-         date, hasMasuk, hasIstirahat, hasSelesaiIstirahat, hasPulang,
-         timeMasuk, timeIstirahat, timeSelesaiIstirahat, timePulang,
-         durasiIstirahat,
-         dataMasuk: getStageData('Absen Masuk'),
-         dataIstirahat: getStageData('Istirahat'),
-         dataSelesaiIstirahat: getStageData('Selesai Istirahat'),
-         dataPulang: getStageData('Absen Pulang')
-       };
+    if (!rawAttendance) return [];
+    
+    // Filter only for current user
+    const myRecords = rawAttendance.filter(r => r.userNik === user.nik);
+    
+    // Group by Date
+    const groups: Record<string, any> = {};
+    
+    myRecords.forEach(r => {
+        const date = r.timestamp.split('T')[0];
+        if (!groups[date]) {
+            groups[date] = {
+                date,
+                hasMasuk: false,
+                hasIstirahat: false,
+                hasSelesaiIstirahat: false,
+                hasPulang: false,
+                timeMasuk: null,
+                timeIstirahat: null,
+                timeSelesaiIstirahat: null,
+                timePulang: null,
+                durasiIstirahat: '',
+                dataMasuk: { photo: null, lat: null, lng: null },
+                dataIstirahat: { photo: null, lat: null, lng: null },
+                dataSelesaiIstirahat: { photo: null, lat: null, lng: null },
+                dataPulang: { photo: null, lat: null, lng: null }
+            };
+        }
+        
+        const g = groups[date];
+        if (r.type === 'Absen Masuk') {
+            g.hasMasuk = true;
+            g.timeMasuk = r.timestamp;
+            g.dataMasuk = { photo: r.photo, lat: r.latitude, lng: r.longitude };
+        } else if (r.type === 'Istirahat') {
+            g.hasIstirahat = true;
+            g.timeIstirahat = r.timestamp;
+            g.dataIstirahat = { photo: r.photo, lat: r.latitude, lng: r.longitude };
+        } else if (r.type === 'Selesai Istirahat') {
+            g.hasSelesaiIstirahat = true;
+            g.timeSelesaiIstirahat = r.timestamp;
+            g.dataSelesaiIstirahat = { photo: r.photo, lat: r.latitude, lng: r.longitude };
+            
+            // Calculate Durasi
+            if (g.timeIstirahat) {
+                const start = new Date(g.timeIstirahat).getTime();
+                const end = new Date(r.timestamp).getTime();
+                const diffMin = Math.floor((end - start) / 60000);
+                g.durasiIstirahat = `${Math.floor(diffMin / 60)} Jam ${diffMin % 60} Menit`;
+            }
+        } else if (r.type === 'Absen Pulang') {
+            g.hasPulang = true;
+            g.timePulang = r.timestamp;
+            g.dataPulang = { photo: r.photo, lat: r.latitude, lng: r.longitude };
+        }
     });
-  }, [user.nik]);
+
+    return Object.values(groups).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [rawAttendance, user.nik]);
 
   const groupedTasks = useMemo(() => {
     const userReports = tugasList.filter(t => t.reporterNik === user.nik || t.staffId === user.id)
@@ -225,8 +240,8 @@ const PPSUMyReportsSection: React.FC<PPSUMyReportsSectionProps> = ({ user, tugas
 
       {/* Attendance Modal */}
       {selectedAttendance && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex justify-center items-end md:items-center p-4 sm:p-6 animate-in fade-in duration-200">
-           <div className="bg-white w-full max-w-md rounded-[2rem] overflow-hidden flex flex-col max-h-[90vh] pb-6 animate-in slide-in-from-bottom-10 md:zoom-in-95 duration-300">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[500] flex justify-center items-end md:items-center p-4 sm:p-6 animate-in fade-in duration-200">
+           <div className="bg-white w-full max-w-md rounded-[2rem] overflow-hidden flex flex-col max-h-[85vh] mb-[80px] md:mb-0 pb-6 animate-in slide-in-from-bottom-10 md:zoom-in-95 duration-300">
               <div className="bg-indigo-600 p-6 text-white relative">
                   <button onClick={() => setSelectedAttendance(null)} className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors">
                       <X size={20} />
@@ -296,8 +311,8 @@ const PPSUMyReportsSection: React.FC<PPSUMyReportsSectionProps> = ({ user, tugas
 
       {/* Task Group Modal */}
       {selectedTaskGroup && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex justify-center items-end md:items-center p-4 sm:p-6 animate-in fade-in duration-200">
-           <div className="bg-white w-full max-w-lg rounded-[2rem] overflow-hidden flex flex-col max-h-[90vh] pb-6 animate-in slide-in-from-bottom-10 md:zoom-in-95 duration-300 relative">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[500] flex justify-center items-end md:items-center p-4 sm:p-6 animate-in fade-in duration-200">
+           <div className="bg-white w-full max-w-lg rounded-[2rem] overflow-hidden flex flex-col max-h-[85vh] mb-[80px] md:mb-0 pb-6 animate-in slide-in-from-bottom-10 md:zoom-in-95 duration-300 relative">
               <div className="bg-orange-600 p-6 text-white shrink-0">
                   <button onClick={() => setSelectedTaskGroup(null)} className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors z-10">
                       <X size={20} />
@@ -340,38 +355,102 @@ const PPSUMyReportsSection: React.FC<PPSUMyReportsSectionProps> = ({ user, tugas
                     <h4 className="font-bold text-slate-800 text-base mb-4 flex items-center gap-2">
                          <Camera size={18} className="text-orange-500" /> Bukti Foto Pelaksanaan
                     </h4>
-                    <div className="grid grid-cols-1 gap-4">
-                        {selectedTaskGroup.latestTask.fotoSebelum && (
-                           <div className="bg-white border rounded-2xl overflow-hidden p-4 shadow-sm border-slate-200">
-                              <p className="text-sm font-black uppercase tracking-widest mb-3 text-rose-500">Foto Sebelum</p>
-                              <div 
-                                  className="w-full h-48 rounded-xl border border-slate-100 overflow-hidden relative group cursor-pointer"
-                                  onClick={() => setFullscreenImage(selectedTaskGroup.latestTask.fotoSebelum)}
-                              >
-                                  <img src={selectedTaskGroup.latestTask.fotoSebelum} alt="Sebelum" className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
-                                  <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                       <Camera size={32} className="text-white drop-shadow-lg" />
-                                  </div>
-                              </div>
-                           </div>
-                        )}
-                        {selectedTaskGroup.latestTask.fotoSesudah && (
-                           <div className="bg-white border rounded-2xl overflow-hidden p-4 shadow-sm border-slate-200">
-                              <p className="text-sm font-black uppercase tracking-widest mb-3 text-emerald-500">Foto Sesudah</p>
-                              <div 
-                                  className="w-full h-48 rounded-xl border border-slate-100 overflow-hidden relative group cursor-pointer"
-                                  onClick={() => setFullscreenImage(selectedTaskGroup.latestTask.fotoSesudah)}
-                              >
-                                  <img src={selectedTaskGroup.latestTask.fotoSesudah} alt="Sesudah" className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
-                                  <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                       <Camera size={32} className="text-white drop-shadow-lg" />
-                                  </div>
-                              </div>
-                           </div>
-                        )}
-                    </div>
+                        {(() => {
+                            const getLogInfo = (status: string) => {
+                                return selectedTaskGroup.latestTask.logs?.find((l: any) => 
+                                    (status === 'Sebelum' && (l.status === 'Laporan Baru' || l.note?.includes('Sebelum'))) ||
+                                    (status === 'Sedang' && (l.status === 'Sedang Dikerjakan' || l.note?.includes('Sedang'))) ||
+                                    (status === 'Selesai' && (l.status === 'Menunggu Verifikasi' || l.note?.includes('Selesai')))
+                                );
+                            };
+
+                            const renderPhotoMeta = (statusLabel: string) => {
+                                const log = getLogInfo(statusLabel);
+                                const time = log ? new Date(log.timestamp) : new Date(selectedTaskGroup.latestTask.timestamp);
+                                return (
+                                    <div className="mt-3 space-y-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                        <div className="flex justify-between items-center">
+                                            <div className="flex items-center gap-1.5 text-slate-500">
+                                                <Calendar size={12} className="text-indigo-400" />
+                                                <span className="text-[10px] font-bold uppercase tracking-tight">{time.toLocaleDateString('id-ID', { dateStyle: 'medium' })}</span>
+                                            </div>
+                                            <div className="flex items-center gap-1.5 text-slate-500">
+                                                <Clock size={12} className="text-indigo-400" />
+                                                <span className="text-[10px] font-bold uppercase tracking-tight">{time.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-start gap-1.5 pt-2 border-t border-slate-200">
+                                            <MapPinned size={14} className="text-emerald-500 shrink-0 mt-0.5" />
+                                            <div className="min-w-0">
+                                                <p className="text-[9px] font-black text-emerald-700 uppercase leading-none mb-1">
+                                                    GPS: {selectedTaskGroup.latestTask.latitude.toFixed(6)}, {selectedTaskGroup.latestTask.longitude.toFixed(6)}
+                                                </p>
+                                                <p className="text-[10px] text-slate-600 font-medium leading-tight line-clamp-2 italic">
+                                                    "{selectedTaskGroup.latestTask.lokasi}"
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            };
+
+                            return (
+                                <div className="grid grid-cols-1 gap-6">
+                                    {selectedTaskGroup.latestTask.fotoSebelum && (
+                                       <div className="bg-white border rounded-2xl overflow-hidden p-4 shadow-sm border-slate-200">
+                                          <p className="text-sm font-black uppercase tracking-widest mb-3 text-rose-500 flex items-center gap-2">
+                                              <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span> Foto Sebelum
+                                          </p>
+                                          <div 
+                                              className="w-full h-48 rounded-xl border border-slate-100 overflow-hidden relative group cursor-pointer"
+                                              onClick={() => setFullscreenImage(selectedTaskGroup.latestTask.fotoSebelum)}
+                                          >
+                                              <img src={selectedTaskGroup.latestTask.fotoSebelum} alt="Sebelum" className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                                              <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                   <Camera size={32} className="text-white drop-shadow-lg" />
+                                              </div>
+                                          </div>
+                                          {renderPhotoMeta('Sebelum')}
+                                       </div>
+                                    )}
+                                    {selectedTaskGroup.latestTask.fotoSedang && (
+                                       <div className="bg-white border rounded-2xl overflow-hidden p-4 shadow-sm border-slate-200">
+                                          <p className="text-sm font-black uppercase tracking-widest mb-3 text-orange-500 flex items-center gap-2">
+                                              <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span> Foto Sedang Mengerjakan
+                                          </p>
+                                          <div 
+                                              className="w-full h-48 rounded-xl border border-slate-100 overflow-hidden relative group cursor-pointer"
+                                              onClick={() => setFullscreenImage(selectedTaskGroup.latestTask.fotoSedang)}
+                                          >
+                                              <img src={selectedTaskGroup.latestTask.fotoSedang} alt="Sedang" className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                                              <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                   <Camera size={32} className="text-white drop-shadow-lg" />
+                                              </div>
+                                          </div>
+                                          {renderPhotoMeta('Sedang')}
+                                       </div>
+                                    )}
+                                    {selectedTaskGroup.latestTask.fotoSesudah && (
+                                       <div className="bg-white border rounded-2xl overflow-hidden p-4 shadow-sm border-slate-200">
+                                          <p className="text-sm font-black uppercase tracking-widest mb-3 text-emerald-500 flex items-center gap-2">
+                                              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Foto Sesudah
+                                          </p>
+                                          <div 
+                                              className="w-full h-48 rounded-xl border border-slate-100 overflow-hidden relative group cursor-pointer"
+                                              onClick={() => setFullscreenImage(selectedTaskGroup.latestTask.fotoSesudah)}
+                                          >
+                                              <img src={selectedTaskGroup.latestTask.fotoSesudah} alt="Sesudah" className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                                              <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                   <Camera size={32} className="text-white drop-shadow-lg" />
+                                              </div>
+                                          </div>
+                                          {renderPhotoMeta('Selesai')}
+                                       </div>
+                                    )}
+                                </div>
+                            );
+                         })()}
                  </div>
-                 
               </div>
            </div>
         </div>
@@ -379,7 +458,7 @@ const PPSUMyReportsSection: React.FC<PPSUMyReportsSectionProps> = ({ user, tugas
 
        {/* Fullscreen Map Preview */}
        {fullscreenMap && (
-         <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-[200] flex justify-center items-center p-4 sm:p-6 animate-in fade-in duration-200" onClick={() => setFullscreenMap(null)}>
+         <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-[600] flex justify-center items-center p-4 sm:p-6 animate-in fade-in duration-200" onClick={() => setFullscreenMap(null)}>
             <div className="bg-white w-full max-w-3xl h-[70vh] rounded-[2rem] overflow-hidden shadow-2xl relative flex flex-col" onClick={e => e.stopPropagation()}>
                <div className="flex items-center gap-4 p-5 border-b border-slate-100 bg-white z-10 shrink-0 shadow-sm relative">
                   <div className="w-12 h-12 rounded-full bg-orange-100 text-orange-500 flex items-center justify-center shrink-0">
@@ -406,11 +485,11 @@ const PPSUMyReportsSection: React.FC<PPSUMyReportsSectionProps> = ({ user, tugas
 
        {/* Fullscreen Image Preview */}
        {fullscreenImage && (
-         <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-[200] flex justify-center items-center p-4 animate-in fade-in duration-200" onClick={() => setFullscreenImage(null)}>
-            <div className="relative w-full max-w-3xl max-h-[85vh] rounded-[2rem] shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
-               <img src={fullscreenImage} alt="Preview Foto" className="w-full h-full object-contain bg-black/50" />
-               <button onClick={() => setFullscreenImage(null)} className="absolute top-4 right-4 p-2 bg-black/50 text-white hover:bg-black/70 rounded-full transition-colors backdrop-blur-md border border-white/20 shadow-lg">
-                   <X size={20} />
+         <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-[1000] flex justify-center items-center p-4 animate-in fade-in duration-200" onClick={() => setFullscreenImage(null)}>
+            <div className="relative w-full max-w-3xl max-h-[85vh] rounded-[3rem] shadow-2xl overflow-hidden border-4 border-white/20" onClick={e => e.stopPropagation()}>
+               <img src={fullscreenImage} alt="Preview Foto" className="w-full h-full object-contain bg-black/80" />
+               <button onClick={() => setFullscreenImage(null)} className="absolute top-6 right-6 p-3 bg-black/60 text-white hover:bg-black/80 rounded-full transition-colors backdrop-blur-md border border-white/20 shadow-xl">
+                   <X size={24} />
                </button>
             </div>
          </div>

@@ -39,14 +39,14 @@ const StaffDashboardSection: React.FC<StaffDashboardSectionProps> = ({
   return (
     <div className="space-y-6">
       {/* Welcome & Profile Header */}
-      <div className="bg-indigo-600 rounded-[2.5rem] p-8 text-white shadow-xl relative overflow-hidden">
-        <div className="relative z-10 flex flex-col md:flex-row items-center md:items-start gap-8">
+      <div className="bg-indigo-600 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden">
+        <div className="relative z-10 flex flex-col md:flex-row items-center md:items-start gap-5">
            <div className="shrink-0 relative">
-              <div className="w-32 h-32 rounded-3xl bg-white/20 border-4 border-white/30 backdrop-blur-md overflow-hidden flex items-center justify-center">
+              <div className="w-20 h-20 rounded-2xl bg-white/20 border-2 border-white/30 overflow-hidden flex items-center justify-center">
                  {user.avatar ? (
                    <img src={user.avatar} alt={user.username} className="w-full h-full object-cover" />
                  ) : (
-                   <UserCircle size={64} className="text-white/50" />
+                   <UserCircle size={40} className="text-white/50" />
                  )}
               </div>
               <div className="absolute -bottom-2 -right-2 bg-emerald-500 text-white p-1.5 rounded-full border-4 border-indigo-600">
@@ -55,9 +55,9 @@ const StaffDashboardSection: React.FC<StaffDashboardSectionProps> = ({
            </div>
            
            <div className="flex-1 text-center md:text-left">
-              <p className="text-indigo-200 font-bold uppercase tracking-[0.2em] text-xs mb-1">Profil {user.role}</p>
-              <h2 className="text-3xl md:text-4xl font-black mb-2">{user.name || user.username}</h2>
-              <div className="flex flex-wrap justify-center md:justify-start gap-4 mt-4">
+              <p className="text-indigo-200 font-medium uppercase tracking-[0.2em] text-[10px] mb-1">Profil {user.role}</p>
+              <h2 className="text-xl md:text-xl font-bold mb-1">{user.name || user.username}</h2>
+              <div className="flex flex-wrap justify-center md:justify-start gap-3 mt-3">
                  <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-xl border border-white/10">
                     <Fingerprint size={16} className="text-indigo-300" />
                     <span className="text-xs font-bold font-mono tracking-wider">{user.nik || 'NIK Belum Teratur'}</span>
@@ -75,10 +75,10 @@ const StaffDashboardSection: React.FC<StaffDashboardSectionProps> = ({
               </div>
            </div>
 
-           <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10 text-center shrink-0 hidden lg:block">
+           <div className="bg-white/10 backdrop-blur-md p-3 rounded-2xl border border-white/10 text-center shrink-0 hidden lg:block self-center">
               <Calendar size={24} className="mx-auto mb-2 text-indigo-200" />
               <p className="text-[10px] font-black uppercase opacity-60">Hari Ini</p>
-              <p className="text-lg font-black">{new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</p>
+              <p className="text-sm font-bold">{new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</p>
            </div>
         </div>
         <Building2 className="absolute -right-16 -bottom-16 size-64 opacity-10" />
@@ -86,9 +86,7 @@ const StaffDashboardSection: React.FC<StaffDashboardSectionProps> = ({
 
       {/* SOS Active Cards */}
       {sosAlerts.length > 0 && (
-         <div className="bg-red-50 border border-red-200 p-6 rounded-3xl shadow-sm animate-in fade-in zoom-in duration-300 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-red-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse"></div>
-            <div className="absolute bottom-0 left-0 w-64 h-64 bg-red-400 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse"></div>
+         <div className="bg-red-50 border border-red-200 p-6 rounded-2xl shadow-sm relative overflow-hidden">
             
             <h3 className="text-xl font-black text-red-700 mb-4 flex items-center gap-2 relative z-10">
               <AlertTriangle size={24} className="animate-pulse" /> Petugas Dalam Bahaya!
@@ -136,42 +134,42 @@ const StaffDashboardSection: React.FC<StaffDashboardSectionProps> = ({
 
       {/* Grid Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
              <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mb-4">
                 <Briefcase size={24} />
              </div>
-             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Total Personil</p>
-             <h3 className="text-3xl font-black text-slate-800">{staff.length}</h3>
+             <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1">Total Personil</p>
+             <h3 className="text-2xl font-bold text-slate-800">{staff.length}</h3>
           </div>
 
-          <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
              <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mb-4">
                 <ShieldCheck size={24} />
              </div>
-             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Online & Aktif</p>
-             <h3 className="text-3xl font-black text-slate-800">{staff.filter(s => s.status === DutyStatus.BERTUGAS).length}</h3>
+             <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1">Online & Aktif</p>
+             <h3 className="text-2xl font-bold text-slate-800">{staff.filter(s => s.status === DutyStatus.BERTUGAS).length}</h3>
           </div>
 
-          <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
              <div className="w-12 h-12 bg-orange-50 text-orange-600 rounded-2xl flex items-center justify-center mb-4">
                 <AlertTriangle size={24} />
              </div>
-             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Pending Laporan</p>
-             <h3 className="text-3xl font-black text-slate-800">{pendingTugas.length}</h3>
+             <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1">Pending Laporan</p>
+             <h3 className="text-2xl font-bold text-slate-800">{pendingTugas.length}</h3>
           </div>
 
-          <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
              <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mb-4">
                 <MapPinned size={24} />
              </div>
-             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Tugas Selesai</p>
-             <h3 className="text-3xl font-black text-slate-800">{tugasList.filter(t => t.status === 'Verified').length}</h3>
+             <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1">Tugas Selesai</p>
+             <h3 className="text-2xl font-bold text-slate-800">{tugasList.filter(t => t.status === 'Verified').length}</h3>
           </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
          {/* Announcements History */}
-         <div className="lg:col-span-2 bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">
+         <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
             <h3 className="text-lg font-black text-slate-800 mb-6 flex items-center gap-2">
                <MapPinned className="text-indigo-600" /> Pengumuman Terbaru
             </h3>
@@ -180,7 +178,7 @@ const StaffDashboardSection: React.FC<StaffDashboardSectionProps> = ({
                   <p className="text-center py-10 text-slate-400 font-bold italic">Belum ada pengumuman.</p>
                ) : (
                   recentAnnouncements.map(ann => (
-                     <div key={ann.id} className="p-4 bg-slate-50 border border-slate-100 rounded-3xl flex gap-4">
+                     <div key={ann.id} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex gap-4">
                         <div className="w-12 h-12 rounded-2xl bg-white text-indigo-500 flex items-center justify-center shrink-0 shadow-sm">
                            <Calendar size={20} />
                         </div>
@@ -198,7 +196,7 @@ const StaffDashboardSection: React.FC<StaffDashboardSectionProps> = ({
          </div>
 
          {/* Quick Stats Distribution */}
-         <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">
+         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
             <h3 className="text-lg font-black text-slate-800 mb-6">Distribusi Gender</h3>
             <div className="space-y-4">
                <div className="flex items-center justify-between p-4 bg-blue-50 rounded-2xl">

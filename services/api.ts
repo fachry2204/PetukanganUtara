@@ -1,4 +1,4 @@
-import { TugasPPSU, Staff, User } from '../types';
+import { TugasPPSU, Staff, User, SystemSettings } from '../types';
 
 // Konfigurasi URL Backend
 // Gunakan environment variable VITE_API_URL jika ada (saat di hosting), jika tidak gunakan localhost
@@ -75,5 +75,14 @@ export const apiService = {
     // --- SOS ---
     getSos: (): Promise<any[]> => fetchData('/sos'),
     createSos: (sos: any) => postData('/sos', sos),
-    resolveSos: (key: string) => putData(`/sos/${key}`, {})
+    resolveSos: (key: string) => putData(`/sos/${key}`, {}),
+
+    // --- SETTINGS ---
+    getSettings: (): Promise<SystemSettings> => fetchData('/settings'),
+    updateSettings: (settings: SystemSettings) => postData('/settings', settings),
+
+    // --- JADWAL ---
+    getJadwal: (): Promise<any[]> => fetchData('/jadwal'),
+    createJadwal: (jadwal: any) => postData('/jadwal', jadwal),
+    deleteJadwal: (id: string) => fetch(`${(import.meta as any).env.VITE_API_URL || 'http://localhost:5000/api'}/jadwal/${id}`, { method: 'DELETE' }).then(r => r.json())
 };

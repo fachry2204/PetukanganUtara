@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   Users, 
   Map, 
@@ -47,34 +47,13 @@ import {
   ListTodo,
   Megaphone
 } from 'lucide-react';
-import { User, SystemSettings, TugasPPSU, Staff, Role, Announcement, AttendanceRecord } from '../types';
-import StaffDashboardSection from './StaffDashboardSection';
-import PPSUSection from './PPSUSection';
-import AttendanceSection from './AttendanceSection';
-import MapSection from './MapSection';
-import SettingsSection from './SettingsSection';
-import UserManagementSection from './UserManagementSection';
-import AnnouncementSection from './AnnouncementSection';
-import AdminReportsSection from './AdminReportsSection';
-import DutySection from './DutySection';
-import { apiService } from '../services/api';
+import { useNavigate, useLocation, Outlet } from 'react-router-dom';
+import { User, SystemSettings } from '../types';
 
 interface LayoutAdminProps {
   user: User;
   settings: SystemSettings;
   setSettings: (s: SystemSettings) => void;
-  staffList: Staff[];
-  setStaffList: React.Dispatch<React.SetStateAction<Staff[]>>;
-  tugasList: TugasPPSU[];
-  setTugasList: React.Dispatch<React.SetStateAction<TugasPPSU[]>>;
-  announcements: Announcement[];
-  setAnnouncements: React.Dispatch<React.SetStateAction<Announcement[]>>;
-  attendanceRecords: AttendanceRecord[];
-  setAttendanceRecords: React.Dispatch<React.SetStateAction<AttendanceRecord[]>>;
-  users: User[];
-  setUsers: React.Dispatch<React.SetStateAction<User[]>>;
-  sosAlerts: any[];
-  onResolveSos: (key: string) => void;
   onLogout: () => void;
 }
 
@@ -82,21 +61,10 @@ const LayoutAdmin: React.FC<LayoutAdminProps> = ({
   user,
   settings,
   setSettings,
-  staffList,
-  setStaffList,
-  tugasList,
-  setTugasList,
-  announcements,
-  setAnnouncements,
-  attendanceRecords,
-  setAttendanceRecords,
-  users,
-  setUsers,
-  sosAlerts,
-  onResolveSos,
   onLogout
 }) => {
-  const [activeSubmenu, setActiveSubmenu] = useState<string>('DASHBOARD');
+  const navigate = useNavigate();
+  const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isSidebarHidden, setIsSidebarHidden] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -109,80 +77,40 @@ const LayoutAdmin: React.FC<LayoutAdminProps> = ({
     {
       title: 'MANAJEMEN PPSU',
       items: [
-        { id: 'DASHBOARD', label: 'Dashboard', icon: <Activity size={20} />, color: 'bg-indigo-600' },
-        { id: 'PENGUMUMAN', label: 'Pengumuman', icon: <Megaphone size={20} />, color: 'bg-amber-500' },
-        { id: 'PPSU', label: 'Data PPSU', icon: <UsersRound size={20} />, color: 'bg-blue-500' },
-        { id: 'ADMIN_ABSEN', label: 'Data Absen PPSU', icon: <Camera size={20} />, color: 'bg-emerald-500' },
-        { id: 'MAP_PPSU', label: 'MAP ANGGOTA', icon: <MapPinned size={20} />, color: 'bg-orange-500' },
-        { id: 'ADMIN_TUGAS', label: 'Data Tugas PPSU', icon: <ClipboardList size={20} />, color: 'bg-purple-500' },
-        { id: 'STATS', label: 'Report', icon: <FileText size={20} />, color: 'bg-rose-500' },
+        { id: 'dashboard', label: 'Dashboard', icon: <Activity size={20} />, color: 'bg-indigo-600' },
+        { id: 'pengumuman', label: 'Pengumuman', icon: <Megaphone size={20} />, color: 'bg-amber-500' },
+        { id: 'ppsu', label: 'Data PPSU', icon: <UsersRound size={20} />, color: 'bg-blue-500' },
+        { id: 'absen', label: 'Data Absen PPSU', icon: <Camera size={20} />, color: 'bg-emerald-500' },
+        { id: 'map', label: 'MAP ANGGOTA', icon: <MapPinned size={20} />, color: 'bg-orange-500' },
+        { id: 'tugas', label: 'Data Tugas PPSU', icon: <ClipboardList size={20} />, color: 'bg-purple-500' },
+        { id: 'jadwal', label: 'Jadwal PPSU', icon: <Calendar size={20} />, color: 'bg-cyan-500' },
+        { id: 'report', label: 'Report', icon: <FileText size={20} />, color: 'bg-rose-500' },
       ]
     },
     {
       title: 'PENGATURAN',
       items: [
-        { id: 'USER_MANAGEMENT', label: 'User Management', icon: <UserCog size={20} />, color: 'bg-slate-600' },
-        { id: 'SETTINGS', label: 'Setting Aplikasi', icon: <Settings size={20} />, color: 'bg-slate-600' },
+        { id: 'users', label: 'User Management', icon: <UserCog size={20} />, color: 'bg-slate-600' },
+        { id: 'settings', label: 'Setting Aplikasi', icon: <Settings size={20} />, color: 'bg-slate-600' },
       ]
     }
   ];
 
-  const renderContent = () => {
-    switch (activeSubmenu) {
-      case 'DASHBOARD':
-        return (
-          <StaffDashboardSection 
-            user={user} 
-            staff={staffList} 
-            tugasList={tugasList} 
-            announcements={announcements} 
-            sosAlerts={sosAlerts}
-            onResolveSos={onResolveSos}
-            onViewLocation={() => setActiveSubmenu('MAP_PPSU')}
-          />
-        );
-      case 'PENGUMUMAN': 
-        return <AnnouncementSection user={user} users={users} announcements={announcements} setAnnouncements={setAnnouncements} />;
-      case 'PPSU':
-        return <PPSUSection user={user} staffList={staffList} setStaffList={setStaffList} />;
-      case 'ADMIN_ABSEN':
-        return <AdminReportsSection mode="ABSEN" attendanceRecords={attendanceRecords} tugasList={tugasList} />;
-      case 'ADMIN_TUGAS':
-        return <AdminReportsSection mode="TUGAS" attendanceRecords={attendanceRecords} tugasList={tugasList} />;
-      case 'MAP_PPSU':
-        return <MapSection tugasList={tugasList} setTugasList={setTugasList} staffList={staffList} setStaffList={setStaffList} sosAlerts={sosAlerts} />;
-      case 'STATS':
-        return <AdminReportsSection mode="FULL_REPORT" attendanceRecords={attendanceRecords} tugasList={tugasList} />;
-      case 'USER_MANAGEMENT':
-        return <UserManagementSection users={users} setUsers={setUsers} initialTab="SEMUA" />;
-      case 'SETTINGS':
-        return <SettingsSection settings={settings} onUpdate={setSettings} />;
-      default:
-        return <StaffDashboardSection 
-          user={user} 
-          staff={staffList} 
-          tugasList={tugasList} 
-          announcements={announcements} 
-          sosAlerts={sosAlerts}
-          onResolveSos={onResolveSos}
-          onViewLocation={() => setActiveSubmenu('MAP_PPSU')}
-        />;
-    }
-  };
+  const currentPath = location.pathname.split('/').pop() || 'dashboard';
 
   const toggleGroup = (title: string) => {
     setExpandedGroups(prev => ({ ...prev, [title]: !prev[title] }));
   };
 
   return (
-    <div className="flex h-screen bg-slate-50 font-sans overflow-hidden">
+    <div className="flex h-screen bg-white font-sans overflow-hidden">
       {/* Desktop Sidebar */}
       <aside 
-        className={`bg-white border-r border-slate-100 flex flex-col transition-all duration-300 z-30 shadow-sm
+        className={`bg-white border-r border-slate-200 flex flex-col transition-all duration-300 z-30 shadow-sm
           ${isSidebarOpen ? 'w-72' : 'w-24'} 
           ${isSidebarHidden ? 'hidden' : 'block'}`}
       >
-        <div className="p-4 flex items-center gap-3 border-b border-slate-100">
+        <div className="p-4 flex items-center gap-3 border-b border-slate-200">
           <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
             {settings.logo ? (
               <img src={settings.logo} alt="Logo" className="w-full h-full object-contain" />
@@ -222,17 +150,17 @@ const LayoutAdmin: React.FC<LayoutAdminProps> = ({
                     <button
                       key={item.id}
                       onClick={() => {
-                        setActiveSubmenu(item.id);
+                        navigate(`/admin/${item.id}`);
                         if (window.innerWidth < 1024) setIsMobileMenuOpen(false);
                       }}
                       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative
-                        ${activeSubmenu === item.id 
+                        ${currentPath === item.id 
                           ? 'bg-indigo-50 text-indigo-700 shadow-sm' 
                           : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}
                       title={!isSidebarOpen ? item.label : ''}
                     >
                       <div className={`p-2 rounded-lg transition-colors shadow-sm
-                        ${activeSubmenu === item.id ? item.color + ' text-white' : 'bg-slate-100 text-slate-400 group-hover:bg-white group-hover:text-slate-600'}`}>
+                        ${currentPath === item.id ? item.color + ' text-white' : 'bg-slate-100 text-slate-400 group-hover:bg-white group-hover:text-slate-600'}`}>
                         {item.icon}
                       </div>
                       {isSidebarOpen && <span className="font-bold text-sm tracking-tight">{item.label}</span>}
@@ -260,7 +188,7 @@ const LayoutAdmin: React.FC<LayoutAdminProps> = ({
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col min-w-0 h-full relative z-0">
          {/* Top Header */}
-         <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-100 flex items-center justify-between px-8 sticky top-0 z-20">
+         <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-20">
             <div className="flex items-center gap-4">
                <button 
                   onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -270,7 +198,7 @@ const LayoutAdmin: React.FC<LayoutAdminProps> = ({
                </button>
                <h2 className="text-xl font-black text-slate-800 tracking-tight flex items-center gap-2">
                   <Activity size={20} className="text-indigo-600" />
-                  {activeSubmenu.replace('_', ' ')}
+                  {currentPath.replace('_', ' ').toUpperCase()}
                </h2>
             </div>
 
@@ -287,7 +215,7 @@ const LayoutAdmin: React.FC<LayoutAdminProps> = ({
 
          {/* Inner Content Scroller */}
          <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
-            {renderContent()}
+            <Outlet />
          </div>
       </main>
     </div>

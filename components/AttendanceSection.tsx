@@ -179,7 +179,8 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user, attendanceR
             longitude: location.lng,
             photoUrl: imageSrc,
             nik: user.nik || 'unknown',
-            staffName: user.name || user.username || 'unknown'
+            staffName: user.name || user.username || 'unknown',
+            address: address
         };
 
         apiService.createAttendance(newRecord).catch(err => console.error("API Attendance Error:", err));

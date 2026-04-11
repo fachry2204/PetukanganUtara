@@ -19,6 +19,8 @@ const usersRoutes = require('./routes/users');
 const attendanceRoutes = require('./routes/attendance');
 const announcementsRoutes = require('./routes/announcements');
 const sosRoutes = require('./routes/sos');
+const settingsRoutes = require('./routes/settings');
+const jadwalRoutes = require('./routes/jadwal');
 
 // API Khusus Waktu Server (Anti-Mock Time)
 app.get('/api/time', (req, res) => {
@@ -32,6 +34,8 @@ app.use('/api/users', usersRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/announcements', announcementsRoutes);
 app.use('/api/sos', sosRoutes);
+app.use('/api/settings', settingsRoutes);
+app.use('/api/jadwal', jadwalRoutes);
 
 // Global Error Handler for better monitoring (Scaling)
 app.use((err, req, res, next) => {

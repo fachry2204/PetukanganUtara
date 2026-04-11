@@ -46,16 +46,28 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, settings, users }) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 relative overflow-hidden">
+      {/* Dynamic Background Image */}
+      {settings.loginBackground && (
+        <div 
+          className="absolute inset-0 z-0 animate-in fade-in duration-1000"
+          style={{ 
+            backgroundImage: `url(${settings.loginBackground})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center'
+          }}
+        />
+      )}
+      
+      {/* Overlay Filter for Contrast */}
+      <div className="absolute inset-0 z-[1] bg-slate-900/10 backdrop-blur-[2px]" />
 
-      {/* Decorative Background Elements (Optional, kept subtle for white theme) */}
-      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-orange-50 rounded-full blur-3xl opacity-50 -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
-      <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-blue-50 rounded-full blur-3xl opacity-50 translate-y-1/2 -translate-x-1/2 pointer-events-none"></div>
+
 
       {/* Form Container with Strong Shadow */}
-      <div className="bg-white w-full max-w-md p-8 rounded-3xl shadow-[0_20px_50px_rgba(8,_112,_184,_0.15)] border border-slate-100 relative z-10 mx-4 animate-in fade-in slide-in-from-bottom-8 duration-500">
+      <div className="bg-white w-full max-w-md p-8 rounded-2xl shadow-xl border border-slate-100 relative z-10 mx-4">
         <div className="text-center mb-8">
-          <div className="w-20 h-20 bg-slate-50 rounded-2xl mx-auto flex items-center justify-center shadow-sm mb-4 transform rotate-3 hover:rotate-0 transition-transform duration-300 border border-slate-100">
+          <div className="w-20 h-20 bg-slate-50 rounded-2xl mx-auto flex items-center justify-center shadow-sm mb-4 border border-slate-100">
             {settings.logo ? (
               <img src={settings.logo} alt="Logo" className="w-14 h-14 object-contain" />
             ) : (

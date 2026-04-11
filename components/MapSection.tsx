@@ -10,17 +10,18 @@ interface MapSectionProps {
   staffList: Staff[];
   setStaffList: React.Dispatch<React.SetStateAction<Staff[]>>;
   sosAlerts: any[];
+  attendanceRecords: any[];
 }
 
-const MapSection: React.FC<MapSectionProps> = ({ tugasList, setTugasList, staffList, setStaffList, sosAlerts }) => {
+const MapSection: React.FC<MapSectionProps> = ({ tugasList, setTugasList, staffList, setStaffList, sosAlerts, attendanceRecords }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
-  const [isListMinimized, setIsListMinimized] = useState(false);
+  const [isListMinimized, setIsListMinimized] = useState(true);
   
   // Legend Minimize State
-  const [isLegendMinimized, setIsLegendMinimized] = useState(false);
+  const [isLegendMinimized, setIsLegendMinimized] = useState(true);
   
   // Task Modal State
   const [viewingTasksFor, setViewingTasksFor] = useState<Staff | null>(null);
@@ -29,17 +30,54 @@ const MapSection: React.FC<MapSectionProps> = ({ tugasList, setTugasList, staffL
   const [mapFilter, setMapFilter] = useState<string>('ALL');
 
   // Base Data Processing - Mark those in SOS as "Dalam Bahaya"
-  const staffWithStatus = useMemo(() => {
-    return staffList.map(s => {
-       const isBahaya = sosAlerts.some(alert => alert.nik === s.nik);
-       if (isBahaya) return { ...s, status: DutyStatus.BAHAYA };
-       return s;
-    });
-  }, [staffList, sosAlerts]);
+  // FILTER: Only show staff who have clocked in today and NOT clocked out
+  const activeStaff = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Get unique NIKs of staff who have 'Absen Masuk' today
+    const clockedInNiks = new Set(
+        attendanceRecords
+            .filter(r => r.type === 'Absen Masuk' && r.timestamp.startsWith(today))
+            .map(r => r.userNik)
+    );
 
-  // Base Data (Exclude Offline)
-  const activeStaff = useMemo(() => staffWithStatus.filter(s => s.status !== DutyStatus.OFFLINE), [staffWithStatus]);
-  
+    // Get unique NIKs of staff who have 'Absen Pulang' today
+    const clockedOutNiks = new Set(
+        attendanceRecords
+            .filter(r => r.type === 'Absen Pulang' && r.timestamp.startsWith(today))
+            .map(r => r.userNik)
+    );
+
+    return staffList
+        .filter(s => (clockedInNiks.has(s.nik) && !clockedOutNiks.has(s.nik)) || sosAlerts.some(alert => alert.nik === s.nik))
+        .map(s => {
+            // Get today's records for this staff
+            const staffRecords = attendanceRecords
+                .filter(r => r.userNik === s.nik && r.timestamp.startsWith(today))
+                .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+            
+            const latest = staffRecords[0];
+            
+            // PRIORITY 1: Dalam Bahaya (SOS)
+            const alert = sosAlerts.find(a => a.nik === s.nik);
+            if (alert) {
+                return { ...s, status: DutyStatus.BAHAYA, latitude: alert.latitude, longitude: alert.longitude };
+            }
+
+            // PRIORITY 2: Istirahat
+            if (latest && latest.type === 'Istirahat') {
+                return { ...s, status: DutyStatus.ISTIRAHAT, latitude: latest.latitude, longitude: latest.longitude };
+            }
+
+            // PRIORITY 3: Online/Bertugas (Keep current status but update location if available)
+            if (latest) {
+                return { ...s, latitude: latest.latitude, longitude: latest.longitude };
+            }
+            
+            return s;
+        });
+  }, [staffList, sosAlerts, attendanceRecords]);
+
   // Counts for Legend
   const stats = useMemo(() => ({
     online: activeStaff.length,
@@ -127,10 +165,10 @@ const MapSection: React.FC<MapSectionProps> = ({ tugasList, setTugasList, staffL
 
       if (staff.status === DutyStatus.BAHAYA) {
         colorClass = 'bg-rose-600';
-        animationClass = 'animate-pulse scale-125';
+        animationClass = 'animate-danger-pulse';
       } else if (staff.status === DutyStatus.BERTUGAS) {
         colorClass = 'bg-blue-600';
-        animationClass = 'animate-ping';
+        animationClass = 'animate-ping opacity-60';
       } else if (staff.status === DutyStatus.ISTIRAHAT) {
         colorClass = 'bg-amber-500';
         animationClass = 'hidden'; 
@@ -142,16 +180,16 @@ const MapSection: React.FC<MapSectionProps> = ({ tugasList, setTugasList, staffL
       const customIcon = L.divIcon({
         className: 'custom-map-marker',
         html: `
-          <div class="relative w-8 h-8 group cursor-pointer ${staff.status === DutyStatus.BAHAYA ? 'z-[100]' : 'z-10'}">
-            <div class="absolute inset-0 rounded-full ${colorClass} opacity-60 ${animationClass}"></div>
-            <div class="relative w-8 h-8 rounded-full border-2 border-white shadow-lg ${colorClass} flex items-center justify-center transition-transform hover:scale-110">
+          <div class="relative w-10 h-10 group cursor-pointer ${staff.status === DutyStatus.BAHAYA ? 'z-[100]' : 'z-10'}">
+            ${staff.status !== DutyStatus.BAHAYA ? `<div class="absolute inset-0 rounded-full ${colorClass} ${animationClass}"></div>` : ''}
+            <div class="relative w-10 h-10 rounded-full border-2 border-white shadow-xl ${colorClass} flex items-center justify-center transition-transform hover:scale-110 ${staff.status === DutyStatus.BAHAYA ? 'animate-danger-pulse' : ''}">
               <img src="${staff.fotoProfile}" class="w-full h-full rounded-full object-cover p-0.5" />
+              ${staff.status === DutyStatus.BAHAYA ? '<div class="absolute -top-1 -right-1 w-4 h-4 bg-white rounded-full flex items-center justify-center shadow-md"><div class="w-2.5 h-2.5 bg-rose-600 rounded-full animate-pulse"></div></div>' : ''}
             </div>
-            ${staff.status === DutyStatus.BAHAYA ? '<div class="absolute -top-1 -left-1 w-3 h-3 bg-rose-600 rounded-full animate-ping"></div>' : ''}
           </div>
         `,
-        iconSize: [32, 32],
-        iconAnchor: [16, 16]
+        iconSize: [40, 40],
+        iconAnchor: [20, 20]
       });
 
       const marker = L.marker([staff.latitude, staff.longitude], { icon: customIcon });
@@ -193,8 +231,8 @@ const MapSection: React.FC<MapSectionProps> = ({ tugasList, setTugasList, staffL
                        <Navigation size={20} className="animate-pulse" />
                     </div>
                     <div>
-                       <h3 className="text-sm font-black text-slate-800 uppercase tracking-tight">MAP PPSU LIVE</h3>
-                       <p className="text-[10px] text-slate-500 font-bold">Kecamatan Pesanggrahan</p>
+                       <h3 className="text-[12px] font-medium text-slate-800 uppercase tracking-tight">MAP PPSU LIVE</h3>
+                       <p className="text-[9px] text-slate-500 font-normal">Kecamatan Pesanggrahan</p>
                     </div>
                  </div>
                  <button onClick={() => setIsLegendMinimized(!isLegendMinimized)} className="p-2 hover:bg-slate-100 rounded-xl transition-all text-slate-400">
@@ -210,9 +248,9 @@ const MapSection: React.FC<MapSectionProps> = ({ tugasList, setTugasList, staffL
                     >
                        <div className="flex items-center gap-3">
                           <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                           <span className="text-xs font-black text-slate-700">Online</span>
+                           <span className="text-[11px] font-medium text-slate-700">Online</span>
                        </div>
-                       <span className="bg-white px-2 py-0.5 rounded-lg text-[10px] font-black text-emerald-600 shadow-sm border border-emerald-50">{stats.online}</span>
+                       <span className="bg-white px-2 py-0.5 rounded-lg text-[9px] font-medium text-emerald-600 shadow-sm border border-emerald-50">{stats.online}</span>
                     </button>
 
                     <button 
@@ -221,9 +259,9 @@ const MapSection: React.FC<MapSectionProps> = ({ tugasList, setTugasList, staffL
                     >
                        <div className="flex items-center gap-3">
                           <div className="w-2 h-2 rounded-full bg-blue-600"></div>
-                          <span className="text-xs font-black text-slate-700">Bertugas</span>
+                          <span className="text-[11px] font-medium text-slate-700">Bertugas</span>
                        </div>
-                       <span className="bg-white px-2 py-0.5 rounded-lg text-[10px] font-black text-blue-600 shadow-sm border border-blue-50">{stats.bertugas}</span>
+                       <span className="bg-white px-2 py-0.5 rounded-lg text-[9px] font-medium text-blue-600 shadow-sm border border-blue-50">{stats.bertugas}</span>
                     </button>
 
                     <button 
@@ -232,9 +270,9 @@ const MapSection: React.FC<MapSectionProps> = ({ tugasList, setTugasList, staffL
                     >
                        <div className="flex items-center gap-3">
                           <div className="w-2 h-2 rounded-full bg-amber-500"></div>
-                          <span className="text-xs font-black text-slate-700">Istirahat</span>
+                          <span className="text-[11px] font-medium text-slate-700">Istirahat</span>
                        </div>
-                       <span className="bg-white px-2 py-0.5 rounded-lg text-[10px] font-black text-amber-600 shadow-sm border border-amber-50">{stats.istirahat}</span>
+                       <span className="bg-white px-2 py-0.5 rounded-lg text-[9px] font-medium text-amber-600 shadow-sm border border-amber-50">{stats.istirahat}</span>
                     </button>
 
                     <button 
@@ -243,14 +281,14 @@ const MapSection: React.FC<MapSectionProps> = ({ tugasList, setTugasList, staffL
                     >
                        <div className="flex items-center gap-3">
                           <div className="w-2 h-2 rounded-full bg-rose-600 animate-ping"></div>
-                          <span className="text-xs font-black text-slate-700">Dalam Bahaya</span>
+                          <span className="text-[11px] font-medium text-slate-700">Dalam Bahaya</span>
                        </div>
-                       <span className="bg-rose-600 px-2 py-0.5 rounded-lg text-[10px] font-black text-white shadow-lg">{stats.bahaya}</span>
+                       <span className="bg-rose-600 px-2 py-0.5 rounded-lg text-[9px] font-medium text-white shadow-lg">{stats.bahaya}</span>
                     </button>
 
                     <button 
                        onClick={() => setMapFilter('ALL')}
-                       className="w-full text-center py-2 text-[10px] font-black text-indigo-500 uppercase tracking-widest hover:underline mt-2"
+                       className="w-full text-center py-2 text-[9px] font-medium text-indigo-500 uppercase tracking-widest hover:underline mt-2"
                     >
                        Tampilkan Semua Personil
                     </button>
@@ -262,7 +300,7 @@ const MapSection: React.FC<MapSectionProps> = ({ tugasList, setTugasList, staffL
         {/* Selected Staff Card Overlay */}
         {selectedStaff && (
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 md:left-auto md:right-6 md:translate-x-0 w-[90%] md:w-80 z-[1000] bg-white rounded-3xl shadow-2xl p-4 border border-slate-100 animate-in slide-in-from-bottom-10 fade-in duration-300">
-            <div className={`absolute -top-3 left-1/2 -translate-x-1/2 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest shadow-lg ${
+            <div className={`absolute -top-3 left-1/2 -translate-x-1/2 text-white text-[9px] font-medium px-3 py-1 rounded-full uppercase tracking-widest shadow-lg ${
                 selectedStaff.status === DutyStatus.BAHAYA ? 'bg-rose-600' : 
                 selectedStaff.status === DutyStatus.BERTUGAS ? 'bg-blue-600' : 'bg-emerald-500'
             }`}>
@@ -275,11 +313,11 @@ const MapSection: React.FC<MapSectionProps> = ({ tugasList, setTugasList, staffL
                 }`}>
                 <img src={selectedStaff.fotoProfile} alt="" className="w-16 h-16 rounded-full object-cover" />
                 </div>
-                <h3 className="font-black text-slate-800 text-lg mt-2 uppercase tracking-tight">{selectedStaff.namaLengkap}</h3>
-                <p className="text-xs font-bold text-slate-400 font-mono">{selectedStaff.nomorAnggota}</p>
+                <h3 className="font-medium text-slate-800 text-sm mt-2 uppercase tracking-tight">{selectedStaff.namaLengkap}</h3>
+                <p className="text-[9px] font-normal text-slate-400 font-mono">{selectedStaff.nomorAnggota}</p>
                 
                 <div className="w-full bg-slate-50 rounded-xl p-3 my-3 text-left space-y-2">
-                    <div className="flex items-start gap-2 text-[11px] text-slate-600 font-bold">
+                    <div className="flex items-start gap-2 text-[10px] text-slate-600 font-medium">
                         <MapPin size={14} className="mt-0.5 shrink-0 text-orange-500" />
                         <span className="leading-tight">{selectedStaff.alamatLengkap}</span>
                     </div>
@@ -289,14 +327,14 @@ const MapSection: React.FC<MapSectionProps> = ({ tugasList, setTugasList, staffL
                     <a 
                         href={`https://wa.me/${selectedStaff.nomorWhatsapp}`}
                         target="_blank"
-                        className="flex-1 flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white py-2.5 rounded-xl text-xs font-black transition-all shadow-sm"
+                        className="flex-1 flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white py-2 rounded-xl text-[10px] font-medium transition-all shadow-sm"
                     >
                         <MessageCircle size={16} /> WA
                     </a>
                     <a 
                         href={`https://www.google.com/maps?q=${selectedStaff.latitude},${selectedStaff.longitude}`}
                         target="_blank"
-                        className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl text-xs font-black transition-all shadow-sm"
+                        className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-xl text-[10px] font-medium transition-all shadow-sm"
                     >
                         <Navigation size={16} /> PETA
                     </a>
@@ -304,14 +342,14 @@ const MapSection: React.FC<MapSectionProps> = ({ tugasList, setTugasList, staffL
 
                 <button 
                     onClick={() => setViewingTasksFor(selectedStaff)}
-                    className="w-full flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 rounded-xl text-xs font-black transition-all border border-slate-200 mb-2"
+                    className="w-full flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 rounded-xl text-[10px] font-medium transition-all border border-slate-200 mb-2"
                 >
                     <ListTodo size={16} /> DAFTAR TUGAS
                 </button>
                 
                 <button 
                     onClick={() => setSelectedStaff(null)}
-                    className="mt-1 text-[10px] text-slate-400 hover:text-slate-600 font-black uppercase tracking-widest"
+                    className="mt-1 text-[9px] text-slate-400 hover:text-slate-600 font-medium uppercase tracking-widest"
                 >
                     Tutup
                 </button>
@@ -331,11 +369,11 @@ const MapSection: React.FC<MapSectionProps> = ({ tugasList, setTugasList, staffL
                     {isListMinimized ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                 </button>
                 <div>
-                   <h3 className="text-sm font-black text-slate-800 uppercase tracking-tight">Daftar PPSU {mapFilter !== 'ALL' ? `(${mapFilter})` : 'Tampil'}</h3>
-                   {!isListMinimized && <p className="text-[10px] text-slate-500 font-bold">Pilih anggota untuk melacak lokasi terkini.</p>}
+                   <h3 className="text-[12px] font-medium text-slate-800 uppercase tracking-tight">Daftar PPSU {mapFilter !== 'ALL' ? `(${mapFilter})` : 'Tampil'}</h3>
+                   {!isListMinimized && <p className="text-[9px] text-slate-500 font-normal">Pilih anggota untuk melacak lokasi terkini.</p>}
                 </div>
              </div>
-             <span className="text-xs font-black bg-indigo-50 text-indigo-700 px-3 py-1 rounded-lg border border-indigo-100">
+             <span className="text-[10px] font-medium bg-indigo-50 text-indigo-700 px-3 py-1 rounded-lg border border-indigo-100">
                 {onlineList.length} Personil
              </span>
           </div>
@@ -361,7 +399,7 @@ const MapSection: React.FC<MapSectionProps> = ({ tugasList, setTugasList, staffL
                             'bg-emerald-500'
                          }`}></div>
                         
-                        <span className="text-[11px] font-black text-slate-700 truncate uppercase tracking-tight">{staff.namaLengkap}</span>
+                        <span className="text-[10px] font-medium text-slate-700 truncate uppercase tracking-tight">{staff.namaLengkap}</span>
                     </div>
                 ))}
              </div>

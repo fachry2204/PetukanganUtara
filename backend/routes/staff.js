@@ -3,8 +3,8 @@ const router = express.Router();
 const db = require('../db');
 const NodeCache = require('node-cache');
 
-// StdTTL: 300 seconds (5 minutes) for Staff as their data doesn't change every second
-const cache = new NodeCache({ stdTTL: 300, checkperiod: 320 });
+// StdTTL: 5 seconds for Staff to ensure status changes (like 'Istirahat') are visible quickly
+const cache = new NodeCache({ stdTTL: 5, checkperiod: 10 });
 
 // GET STAFF (Optimized and Cached)
 router.get('/', async (req, res) => {

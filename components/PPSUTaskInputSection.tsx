@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Camera, MapPin, RefreshCw, CheckCircle2, AlertTriangle, Send, ShieldCheck, ClipboardList } from 'lucide-react';
-import { User as UserType, TugasPPSU, Staff } from '../types';
+import { User as UserType, TugasPPSU, Staff, ReportStatus } from '../types';
 import LocationMiniMap from './LocationMiniMap';
 import { apiService } from '../services/api';
 
@@ -8,9 +8,10 @@ interface PPSUTaskInputSectionProps {
   user: UserType;
   tugasList: TugasPPSU[];
   setTugasList: React.Dispatch<React.SetStateAction<TugasPPSU[]>>;
+  attendanceRecords?: any[];
 }
 
-const PPSUTaskInputSection: React.FC<PPSUTaskInputSectionProps> = ({ user, tugasList, setTugasList }) => {
+const PPSUTaskInputSection: React.FC<PPSUTaskInputSectionProps> = ({ user, tugasList, setTugasList, attendanceRecords = [] }) => {
   const [step, setStep] = useState<'idle' | 'form' | 'locating' | 'verify_location' | 'camera' | 'success'>('idle');
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [photo, setPhoto] = useState<string | null>(null);
@@ -35,14 +36,15 @@ const PPSUTaskInputSection: React.FC<PPSUTaskInputSectionProps> = ({ user, tugas
 
   useEffect(() => {
      if (step === 'idle') {
-        const checkedInStatus = localStorage.getItem(`attn_${user.nik}_${todayDateStr}_Absen Masuk`) === 'true';
-        const checkedOutStatus = localStorage.getItem(`attn_${user.nik}_${todayDateStr}_Absen Pulang`) === 'true';
         const sebelumTugasStatus = localStorage.getItem(`task_${user.nik}_${todayDateStr}_Sebelum Tugas`) === 'true';
         const sedangTugasStatus = localStorage.getItem(`task_${user.nik}_${todayDateStr}_Sedang Tugas`) === 'true';
         const selesaiTugasStatus = localStorage.getItem(`task_${user.nik}_${todayDateStr}_Selesai Tugas`) === 'true';
-        const istirahatStatus = localStorage.getItem(`attn_${user.nik}_${todayDateStr}_Istirahat`) === 'true';
-        const selesaiIstirahatStatus = localStorage.getItem(`attn_${user.nik}_${todayDateStr}_Selesai Istirahat`) === 'true';
         
+        const checkedInStatus = attendanceRecords.some(r => r.userNik === user.nik && r.type === 'Absen Masuk' && r.timestamp.startsWith(todayDateStr));
+        const checkedOutStatus = attendanceRecords.some(r => r.userNik === user.nik && r.type === 'Absen Pulang' && r.timestamp.startsWith(todayDateStr));
+        const istirahatStatus = attendanceRecords.some(r => r.userNik === user.nik && r.type === 'Istirahat' && r.timestamp.startsWith(todayDateStr));
+        const selesaiIstirahatStatus = attendanceRecords.some(r => r.userNik === user.nik && r.type === 'Selesai Istirahat' && r.timestamp.startsWith(todayDateStr));
+
         setHasCheckedIn(checkedInStatus);
         setHasCheckedOut(checkedOutStatus);
         setHasSebelumTugas(sebelumTugasStatus);
@@ -56,7 +58,7 @@ const PPSUTaskInputSection: React.FC<PPSUTaskInputSectionProps> = ({ user, tugas
         else if (!sedangTugasStatus) setTaskStatus('Sedang Tugas');
         else if (!selesaiTugasStatus) setTaskStatus('Selesai Tugas');
      }
-  }, [step, user.nik, todayDateStr]);
+  }, [step, user.nik, todayDateStr, attendanceRecords]);
   
   // Form State
   const [taskStatus, setTaskStatus] = useState<string>('Sebelum Tugas');
@@ -211,41 +213,110 @@ const PPSUTaskInputSection: React.FC<PPSUTaskInputSectionProps> = ({ user, tugas
 
         // SAVE TUGAS TO STATE/DB LOOP
         const timestampStr = timeToPrint.toISOString();
-        const newTugas: Partial<TugasPPSU> = {
-            id: `TUGAS-${Date.now()}`,
-            judulTugas: taskTitle,
-            deskripsi: taskDesc,
-            kategori: 'Infrastruktur',
-            lokasi: address,
-            latitude: location.lat,
-            longitude: location.lng,
-            staffId: user.id || user.nik, 
-            reporterName: user.name || user.username,
-            reporterNik: user.nik || '',
-            status: 'Menunggu Verifikasi',
-            timestamp: timestampStr,
-            priority: 'Medium',
-            logs: [{
-                status: 'Laporan Baru',
-                actor: user.name || user.username,
-                timestamp: timestampStr,
-                note: `Validasi GPS dan Waktu Berhasil - ${taskStatus}`
-            }]
-        };
+        const savedTaskId = localStorage.getItem(`taskId_${user.nik}_${todayDateStr}`);
 
         if (taskStatus === 'Sebelum Tugas') {
-            newTugas.fotoSebelum = imageSrc;
-        } else if (taskStatus === 'Selesai Tugas') {
-            newTugas.fotoSesudah = imageSrc;
-        }
+            const newTugas: Partial<TugasPPSU> = {
+                id: `TUGAS-${Date.now()}`,
+                judulTugas: taskTitle,
+                deskripsi: taskDesc,
+                kategori: 'Infrastruktur',
+                lokasi: address,
+                latitude: location.lat,
+                longitude: location.lng,
+                staffId: user.id || user.nik, 
+                reporterName: user.name || user.username,
+                reporterNik: user.nik || '',
+                status: ReportStatus.VERIFICATION,
+                timestamp: timestampStr,
+                priority: 'Medium',
+                fotoSebelum: imageSrc,
+                photoUrl: imageSrc, // Default for compatibility
+                logs: [{
+                    status: ReportStatus.NEW,
+                    actor: user.name || user.username,
+                    timestamp: timestampStr,
+                    note: `Laporan Awal (Sebelum Tugas) Berhasil`
+                }]
+            };
 
-        try {
-            const result = await apiService.createTugasPPSU(newTugas as any);
-            setTugasList([result, ...tugasList]);
-            setStep('success');
-        } catch (error) {
-            console.error('Failed to submit tugas:', error);
-            setError('Gagal mengirim laporan ke server. Silahkan coba lagi.');
+            try {
+                const result = await apiService.createTugasPPSU(newTugas as any);
+                localStorage.setItem(`taskId_${user.nik}_${todayDateStr}`, result.id);
+                setTugasList([result, ...tugasList]);
+                setStep('success');
+            } catch (error) {
+                console.error('Failed to create tugas:', error);
+                setError('Gagal membuat laporan awal.');
+            }
+        } else {
+            // UPDATING EXISTING TASK
+            if (!savedTaskId) {
+                setError('ID Laporan Awal tidak ditemukan. Silahkan mulai dari awal.');
+                return;
+            }
+
+            let taskToUpdate = tugasList.find(t => t.id === savedTaskId);
+            
+            // If not in props, maybe it was just created and props haven't updated
+            if (!taskToUpdate) {
+                try {
+                    const allTugas = await apiService.getTugasPPSU();
+                    taskToUpdate = allTugas.find(t => t.id === savedTaskId);
+                } catch (e) {
+                    console.error("Failed to fetch fresh tugas list", e);
+                }
+            }
+
+            if (!taskToUpdate) {
+                setError('Laporan tidak ditemukan di daftar. Coba refresh halaman anda.');
+                return;
+            }
+
+            const updatedTask: TugasPPSU = {
+                ...taskToUpdate,
+                logs: [
+                    ...(taskToUpdate.logs || []),
+                    {
+                        status: taskStatus === 'Sedang Tugas' ? ReportStatus.IN_PROGRESS : ReportStatus.VERIFICATION,
+                        actor: user.name || user.username,
+                        timestamp: timestampStr,
+                        note: `Progres Terlaporkan: ${taskStatus}`
+                    }
+                ]
+            };
+
+            if (taskStatus === 'Sedang Tugas') {
+                updatedTask.fotoSedang = imageSrc;
+                updatedTask.status = ReportStatus.IN_PROGRESS;
+            } else if (taskStatus === 'Selesai Tugas') {
+                updatedTask.fotoSesudah = imageSrc;
+                updatedTask.status = ReportStatus.VERIFICATION;
+                updatedTask.photoUrl = imageSrc; // Update default one
+            }
+
+            try {
+                await apiService.updateTugasPPSU(updatedTask);
+                
+                // Clear state for next task if finished
+                if (taskStatus === 'Selesai Tugas') {
+                    localStorage.removeItem(`taskId_${user.nik}_${todayDateStr}`);
+                    localStorage.removeItem(`taskTitle_${user.nik}_${todayDateStr}`);
+                    localStorage.removeItem(`taskDesc_${user.nik}_${todayDateStr}`);
+                }
+
+                setTugasList(prev => {
+                    const exists = prev.some(t => t.id === updatedTask.id);
+                    if (exists) {
+                        return prev.map(t => t.id === updatedTask.id ? updatedTask : t);
+                    }
+                    return [updatedTask, ...prev];
+                });
+                setStep('success');
+            } catch (error) {
+                console.error('Failed to update tugas:', error);
+                setError('Gagal memperbarui progres tugas.');
+            }
         }
       }
     }

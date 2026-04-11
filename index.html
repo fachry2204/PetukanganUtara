@@ -11,7 +11,7 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f8fafc;
+            background-color: #ffffff;
         }
         @media print {
             .no-print {
@@ -35,18 +35,13 @@
             animation: ping-fast 0.8s cubic-bezier(0, 0, 0.2, 1) infinite;
         }
 
-        @keyframes ping-rapid {
-            0% {
-                transform: scale(1);
-                opacity: 0.8;
-            }
-            100% {
-                transform: scale(3); 
-                opacity: 0;
-            }
+        @keyframes danger-pulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.7); opacity: 1; }
+            50% { transform: scale(1.4); box-shadow: 0 0 0 15px rgba(225, 29, 72, 0); opacity: 0.5; }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(225, 29, 72, 0); opacity: 1; }
         }
-        .animate-ping-rapid {
-            animation: ping-rapid 0.6s cubic-bezier(0, 0, 0.2, 1) infinite;
+        .animate-danger-pulse {
+            animation: danger-pulse 0.5s infinite;
         }
         
         /* Scrollbar styling */
@@ -70,6 +65,10 @@
         .no-scrollbar {
             -ms-overflow-style: none; 
             scrollbar-width: none;  
+        }
+        #preact-border-shadow-host, [id*="preact-border"], .agy-blue-glow {
+            display: none !important;
+            visibility: hidden !important;
         }
     </style>
 <script type="importmap">
