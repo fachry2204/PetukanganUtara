@@ -97,8 +97,10 @@ CREATE TABLE IF NOT EXISTS settings (
   theme_color VARCHAR(50),
   logo TEXT,
   login_background TEXT,
-  anjungan_background TEXT
+  anjungan_background TEXT,
+  zona_list JSON,
+  shift_config JSON
 );
 
-INSERT IGNORE INTO settings (id, system_name, sub_name, footer_text, app_version, theme_color, logo, login_background, anjungan_background)
-VALUES ('app_settings', 'SiPetut', 'Kelurahan Petukangan Utara', '© 2026 Kelurahan Petukangan Utara. All Rights Reserved.', '1.0.0', '#f97316', 'https://upload.wikimedia.org/wikipedia/commons/e/eb/Coat_of_arms_of_Jakarta.svg', NULL, 'https://images.unsplash.com/photo-1588668214407-6ea9a6d8c272?q=80&w=2000');
+INSERT IGNORE INTO settings (id, system_name, sub_name, footer_text, app_version, theme_color, logo, login_background, anjungan_background, zona_list, shift_config)
+VALUES ('app_settings', 'SiPetut', 'Kelurahan Petukangan Utara', '© 2026 Kelurahan Petukangan Utara. All Rights Reserved.', '1.0.0', '#f97316', 'https://upload.wikimedia.org/wikipedia/commons/e/eb/Coat_of_arms_of_Jakarta.svg', NULL, 'https://images.unsplash.com/photo-1588668214407-6ea9a6d8c272?q=80&w=2000', '["Zona 1", "Zona 2", "Zona 3"]', '[{"name": "Pagi", "start": "07:00", "end": "15:00"}, {"name": "Siang", "start": "15:00", "end": "23:00"}, {"name": "Malam", "start": "23:00", "end": "07:00"}]');

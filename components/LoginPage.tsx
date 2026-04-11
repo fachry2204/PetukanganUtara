@@ -50,17 +50,18 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, settings, users }) => {
       {/* Dynamic Background Image */}
       {settings.loginBackground && (
         <div 
-          className="absolute inset-0 z-0 animate-in fade-in duration-1000"
+          className="absolute inset-0 z-0 animate-in fade-in duration-1000 opacity-70"
           style={{ 
             backgroundImage: `url(${settings.loginBackground})`,
             backgroundSize: 'cover',
-            backgroundPosition: 'center'
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat'
           }}
         />
       )}
       
-      {/* Overlay Filter for Contrast */}
-      <div className="absolute inset-0 z-[1] bg-slate-900/10 backdrop-blur-[2px]" />
+      {/* Overlay Filter for Contrast - Black 40% */}
+      <div className="absolute inset-0 z-[1] bg-black/40 backdrop-blur-[2px]" />
 
 
 

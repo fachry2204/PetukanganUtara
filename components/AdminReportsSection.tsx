@@ -11,11 +11,15 @@ interface AdminReportsSectionProps {
    user: User;
    users: User[];
    staff: Staff[];
+   settings: any;
+   schedules: any[];
 }
 
-const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attendanceRecords, tugasList, onUpdateTugas, user, users, staff }) => {
+const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attendanceRecords, tugasList, onUpdateTugas, user, users, staff, settings, schedules }) => {
    const [searchTerm, setSearchTerm] = useState('');
    const [filterType, setFilterType] = useState<string>('ALL');
+   const [filterZona, setFilterZona] = useState<string>('ALL');
+   const [filterShift, setFilterShift] = useState<string>('ALL');
    const [filterDate, setFilterDate] = useState<string>('');
    const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
    const [selectedAttendance, setSelectedAttendance] = useState<AttendanceRecord | null>(null);
@@ -72,7 +76,16 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
       const matchesType = filterType === 'ALL' || rec.type === filterType;
       const recDate = new Date(rec.timestamp).toISOString().split('T')[0];
       const matchesDate = !filterDate || recDate === filterDate;
-      return matchesSearch && matchesType && matchesDate;
+      
+      // Get Day name for schedule matching
+      const dayName = new Date(rec.timestamp).toLocaleDateString('en-US', { weekday: 'long' });
+      const staffMember = staff.find(s => s.nik === rec.userNik);
+      const schedule = schedules.find(s => s.staff_id === staffMember?.id && s.day === dayName);
+
+      const matchesZona = filterZona === 'ALL' || (schedule && schedule.area === filterZona);
+      const matchesShift = filterShift === 'ALL' || (schedule && schedule.shift === filterShift);
+
+      return matchesSearch && matchesType && matchesDate && matchesZona && matchesShift;
    });
 
    const groupedTasks = useMemo(() => {
@@ -104,7 +117,14 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
       const taskDate = new Date(t.timestamp).toISOString().split('T')[0];
       const matchesDate = !filterDate || taskDate === filterDate;
       
-      return matchesSearch && matchesDate;
+      const dayName = new Date(t.timestamp).toLocaleDateString('en-US', { weekday: 'long' });
+      const staffMember = staff.find(s => s.nik === t.reporterNik);
+      const schedule = schedules.find(s => s.staff_id === staffMember?.id && s.day === dayName);
+
+      const matchesZona = filterZona === 'ALL' || (schedule && schedule.area === filterZona);
+      const matchesShift = filterShift === 'ALL' || (schedule && schedule.shift === filterShift);
+
+      return matchesSearch && matchesDate && matchesZona && matchesShift;
    });
 
    const renderAttendanceView = () => (
@@ -134,39 +154,63 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
                      onChange={(e) => setSearchTerm(e.target.value)}
                   />
                </div>
-               <select
-                  className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold outline-none"
-                  value={filterType}
-                  onChange={(e) => setFilterType(e.target.value)}
-               >
-                  <option value="ALL">Semua Tipe</option>
-                  <option value="Absen Masuk">Masuk</option>
-                  <option value="Istirahat">Istirahat</option>
-                  <option value="Selesai Istirahat">Selesai Istirahat</option>
-                  <option value="Absen Pulang">Pulang</option>
-               </select>
-            </div>
-         </div>
+                <select
+                   className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold outline-none"
+                   value={filterType}
+                   onChange={(e) => setFilterType(e.target.value)}
+                >
+                   <option value="ALL">Semua Tipe</option>
+                   <option value="Absen Masuk">Masuk</option>
+                   <option value="Istirahat">Istirahat</option>
+                   <option value="Selesai Istirahat">Selesai Istirahat</option>
+                   <option value="Absen Pulang">Pulang</option>
+                </select>
+
+                <select
+                   className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold outline-none"
+                   value={filterZona}
+                   onChange={(e) => setFilterZona(e.target.value)}
+                >
+                   <option value="ALL">Semua Zona</option>
+                   {settings.zona_list && settings.zona_list.map((z: any) => (
+                      <option key={z.id} value={z.name}>{z.name}</option>
+                   ))}
+                </select>
+
+                <select
+                   className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold outline-none"
+                   value={filterShift}
+                   onChange={(e) => setFilterShift(e.target.value)}
+                >
+                   <option value="ALL">Semua Shift</option>
+                   {settings.shift_config && settings.shift_config.map((s: any) => (
+                      <option key={s.id} value={s.name}>{s.name}</option>
+                   ))}
+                </select>
+             </div>
+          </div>
 
          <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
             <div className="overflow-x-auto custom-scrollbar">
                <table className="w-full text-left text-sm border-collapse">
                   <thead>
                      <tr className="bg-slate-50 border-b border-slate-100 text-slate-400 uppercase text-[10px] font-black tracking-widest">
-                        <th className="py-4 px-6 text-center w-16">No</th>
-                        <th className="py-4 px-4">Nama Personil</th>
-                        <th className="py-4 px-4 text-center">Jenis Absen</th>
-                        <th className="py-4 px-4 text-center">Tanggal</th>
-                        <th className="py-4 px-4 text-center">Waktu</th>
-                        <th className="py-4 px-4">Lokasi & Alamat</th>
-                        <th className="py-4 px-6 text-center">Foto</th>
-                        <th className="py-4 px-6 text-center">Detail</th>
+                         <th className="py-4 px-4 text-center w-16">No</th>
+                         <th className="py-4 px-4">Nama Personil</th>
+                         <th className="py-4 px-4 text-center">Jenis Absen</th>
+                         <th className="py-4 px-4 text-center">Zona</th>
+                         <th className="py-4 px-4 text-center">Shift</th>
+                         <th className="py-4 px-4 text-center">Tanggal</th>
+                         <th className="py-4 px-4 text-center">Waktu</th>
+                         <th className="py-4 px-4">Lokasi & Alamat</th>
+                         <th className="py-4 px-4 text-center">Foto</th>
+                         <th className="py-4 px-4 text-center">Detail</th>
                      </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
                      {filteredAttendance.length === 0 ? (
                         <tr>
-                           <td colSpan={8} className="py-20 text-center text-slate-400">
+                           <td colSpan={10} className="py-20 text-center text-slate-400">
                               <Camera size={48} className="mx-auto mb-3 opacity-20" />
                               <p className="font-bold uppercase tracking-widest text-xs">Belum Ada Data Absensi</p>
                            </td>
@@ -174,25 +218,41 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
                      ) : (
                         filteredAttendance.map((rec, idx) => (
                            <tr key={rec.id} className="hover:bg-slate-50/80 transition-colors group">
-                              <td className="py-4 px-6 text-center font-black text-slate-300 group-hover:text-indigo-400 transition-colors">{idx + 1}</td>
-                              <td className="py-4 px-4">
-                                 <p className="font-black text-slate-800 uppercase text-xs tracking-tight">{rec.userName}</p>
-                                 <p className="text-[10px] font-bold font-mono text-slate-400">NIK: {rec.userNik}</p>
-                              </td>
-                              <td className="py-4 px-4 text-center">
-                                 <span className={`text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-wider ${rec.type === 'Absen Masuk' ? 'bg-emerald-50 text-emerald-600' :
-                                       rec.type === 'Absen Pulang' ? 'bg-rose-50 text-rose-600' :
-                                          rec.type === 'Istirahat' ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'
-                                    }`}>
-                                    {rec.type}
-                                 </span>
-                              </td>
-                              <td className="py-4 px-4 text-center font-bold text-slate-500 text-xs">
-                                 {new Date(rec.timestamp).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
-                              </td>
-                              <td className="py-4 px-4 text-center font-black text-slate-800 text-xs">
-                                 {new Date(rec.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':')}
-                              </td>
+                               <td className="py-4 px-4 text-center font-black text-slate-300 group-hover:text-indigo-400 transition-colors">{idx + 1}</td>
+                               <td className="py-4 px-4">
+                                  <p className="font-black text-slate-800 uppercase text-xs tracking-tight">{rec.userName}</p>
+                                  <p className="text-[10px] font-bold font-mono text-slate-400">NIK: {rec.userNik}</p>
+                               </td>
+                               <td className="py-4 px-4 text-center">
+                                  <span className={`text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-wider ${rec.type === 'Absen Masuk' ? 'bg-emerald-50 text-emerald-600' :
+                                        rec.type === 'Absen Pulang' ? 'bg-rose-50 text-rose-600' :
+                                           rec.type === 'Istirahat' ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'
+                                     }`}>
+                                     {rec.type}
+                                  </span>
+                               </td>
+                               <td className="py-4 px-4 text-center">
+                                  {(() => {
+                                      const dayName = new Date(rec.timestamp).toLocaleDateString('en-US', { weekday: 'long' });
+                                      const staffMember = staff.find(s => s.nik === rec.userNik);
+                                      const schedule = schedules.find(s => s.staff_id === staffMember?.id && s.day === dayName);
+                                      return <span className="text-[10px] font-bold text-slate-600 uppercase bg-slate-100 px-2 py-1 rounded-md">{schedule ? schedule.area : '-'}</span>;
+                                  })()}
+                               </td>
+                               <td className="py-4 px-4 text-center">
+                                  {(() => {
+                                      const dayName = new Date(rec.timestamp).toLocaleDateString('en-US', { weekday: 'long' });
+                                      const staffMember = staff.find(s => s.nik === rec.userNik);
+                                      const schedule = schedules.find(s => s.staff_id === staffMember?.id && s.day === dayName);
+                                      return <span className="text-[10px] font-black text-indigo-600 uppercase">{schedule ? schedule.shift : '-'}</span>;
+                                  })()}
+                               </td>
+                               <td className="py-4 px-4 text-center font-bold text-slate-500 text-xs text-nowrap">
+                                  {new Date(rec.timestamp).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
+                               </td>
+                               <td className="py-4 px-4 text-center font-black text-slate-800 text-xs">
+                                  {new Date(rec.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':')}
+                               </td>
                               <td className="py-4 px-4 max-w-xs">
                                  <div className="flex items-start gap-2">
                                     <button 
@@ -263,6 +323,27 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
                      onChange={(e) => setSearchTerm(e.target.value)}
                   />
                </div>
+                <select
+                   className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold outline-none"
+                   value={filterZona}
+                   onChange={(e) => setFilterZona(e.target.value)}
+                >
+                   <option value="ALL">Semua Zona</option>
+                   {settings.zona_list && settings.zona_list.map((z: any) => (
+                      <option key={z.id} value={z.name}>{z.name}</option>
+                   ))}
+                </select>
+
+                <select
+                   className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold outline-none"
+                   value={filterShift}
+                   onChange={(e) => setFilterShift(e.target.value)}
+                >
+                   <option value="ALL">Semua Shift</option>
+                   {settings.shift_config && settings.shift_config.map((s: any) => (
+                      <option key={s.id} value={s.name}>{s.name}</option>
+                   ))}
+                </select>
             </div>
          </div>
 
@@ -274,6 +355,8 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
                         <th className="py-4 px-6 text-center w-16">No</th>
                         <th className="py-4 px-4">Tugas</th>
                         <th className="py-4 px-4">Petugas</th>
+                        <th className="py-4 px-4 text-center">Zona</th>
+                        <th className="py-4 px-4 text-center">Shift</th>
                         <th className="py-4 px-4">Alamat & Lokasi</th>
                         <th className="py-4 px-4">Waktu & Tanggal</th>
                         <th className="py-4 px-4 text-center">Status</th>
@@ -299,6 +382,22 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
                                  <p className="font-bold text-slate-700 text-xs">{t.reporterName}</p>
                                  <p className="text-[9px] font-mono text-slate-400 font-bold">ID: {getPPSUID(t.reporterNik)}</p>
                               </td>
+                               <td className="py-4 px-4 text-center">
+                                  {(() => {
+                                      const dayName = new Date(t.timestamp).toLocaleDateString('en-US', { weekday: 'long' });
+                                      const staffMember = staff.find(s => s.nik === t.reporterNik);
+                                      const schedule = schedules.find(s => s.staff_id === staffMember?.id && s.day === dayName);
+                                      return <span className="text-[10px] font-bold text-slate-600 uppercase bg-slate-100 px-2 py-1 rounded-md">{schedule ? schedule.area : '-'}</span>;
+                                  })()}
+                               </td>
+                               <td className="py-4 px-4 text-center">
+                                  {(() => {
+                                      const dayName = new Date(t.timestamp).toLocaleDateString('en-US', { weekday: 'long' });
+                                      const staffMember = staff.find(s => s.nik === t.reporterNik);
+                                      const schedule = schedules.find(s => s.staff_id === staffMember?.id && s.day === dayName);
+                                      return <span className="text-[10px] font-black text-indigo-600 uppercase">{schedule ? schedule.shift : '-'}</span>;
+                                  })()}
+                               </td>
                               <td className="py-4 px-4 max-w-[250px]">
                                  <div className="flex items-start gap-2">
                                     <button 

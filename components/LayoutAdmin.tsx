@@ -214,7 +214,7 @@ const LayoutAdmin: React.FC<LayoutAdminProps> = ({
          </header>
 
          {/* Inner Content Scroller */}
-         <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
+         <div className={`flex-1 flex flex-col min-h-0 ${currentPath === 'map' ? '' : 'p-4 md:p-8 overflow-y-auto'} custom-scrollbar`}>
             <Outlet />
          </div>
       </main>

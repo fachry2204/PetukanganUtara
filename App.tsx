@@ -74,6 +74,7 @@ const App: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  const [schedules, setSchedules] = useState<any[]>([]);
   const [receivedSosAlerts, setReceivedSosAlerts] = useState<any[]>([]);
   
   const [showSosAlertModal, setShowSosAlertModal] = useState(false);
@@ -86,14 +87,15 @@ const App: React.FC = () => {
 
   const fetchAllData = async () => {
     try {
-      const [dataTugas, dataStaff, dataUsers, dataAnn, dataAtt, dataSos, dataSettings] = await Promise.all([
+      const [dataTugas, dataStaff, dataUsers, dataAnn, dataAtt, dataSos, dataSettings, dataJadwal] = await Promise.all([
         apiService.getTugasPPSU(),
         apiService.getStaff(),
         apiService.getUsers(),
         apiService.getAnnouncements(),
         apiService.getAttendance(),
         apiService.getSos(),
-        apiService.getSettings()
+        apiService.getSettings(),
+        apiService.getJadwal()
       ]);
 
       if (dataTugas) setTugasList(dataTugas);
@@ -101,8 +103,9 @@ const App: React.FC = () => {
       if (dataUsers) setUsers(dataUsers);
       if (dataAnn) setAnnouncements(dataAnn);
       if (dataAtt) setAttendanceRecords(dataAtt);
-      if (dataSos) setReceivedSosAlerts(dataSos.map((s: any) => ({ key: s.alert_key, ...s })));
       if (dataSettings) setSettings(dataSettings);
+      if (dataSos) setReceivedSosAlerts(dataSos.map((s: any) => ({ key: s.alert_key, ...s })));
+      if (dataJadwal) setSchedules(dataJadwal);
     } catch (error) {
       console.error('Error fetching data from API:', error);
     }
@@ -238,11 +241,21 @@ const App: React.FC = () => {
             } />
             <Route path="pengumuman" element={<AnnouncementSection user={currentUser!} users={users} announcements={announcements} setAnnouncements={setAnnouncements} />} />
             <Route path="ppsu" element={<PPSUSection user={currentUser!} staffList={staffList} setStaffList={setStaffList} />} />
-            <Route path="absen" element={<AdminReportsSection mode="ABSEN" attendanceRecords={attendanceRecords} tugasList={tugasList} user={currentUser!} users={users} staff={staffList} />} />
-            <Route path="tugas" element={<AdminReportsSection mode="TUGAS" attendanceRecords={attendanceRecords} tugasList={tugasList} onUpdateTugas={(updated) => setTugasList(prev => prev.map(t => t.id === updated.id ? updated : t))} user={currentUser!} users={users} staff={staffList} />} />
+            <Route path="absen" element={<AdminReportsSection mode="ABSEN" attendanceRecords={attendanceRecords} tugasList={tugasList} user={currentUser!} users={users} staff={staffList} settings={settings} schedules={schedules} />} />
+            <Route path="tugas" element={<AdminReportsSection mode="TUGAS" attendanceRecords={attendanceRecords} tugasList={tugasList} onUpdateTugas={(updated) => setTugasList(prev => prev.map(t => t.id === updated.id ? updated : t))} user={currentUser!} users={users} staff={staffList} settings={settings} schedules={schedules} />} />
             <Route path="jadwal" element={<ScheduleManagementSection staffList={staffList} settings={settings} />} />
-            <Route path="report" element={<AdminReportsSection mode="FULL_REPORT" attendanceRecords={attendanceRecords} tugasList={tugasList} user={currentUser!} users={users} staff={staffList} />} />
+            <Route path="report" element={<AdminReportsSection mode="FULL_REPORT" attendanceRecords={attendanceRecords} tugasList={tugasList} user={currentUser!} users={users} staff={staffList} settings={settings} schedules={schedules} />} />
             <Route path="users" element={<UserManagementSection users={users} setUsers={setUsers} initialTab="SEMUA" />} />
+            <Route path="map" element={
+              <MapSection 
+                tugasList={tugasList} 
+                setTugasList={setTugasList}
+                staffList={staffList}
+                setStaffList={setStaffList}
+                sosAlerts={receivedSosAlerts}
+                attendanceRecords={attendanceRecords}
+              />
+            } />
             <Route path="settings" element={<SettingsSection settings={settings} onUpdate={setSettings} />} />
         </Route>
 

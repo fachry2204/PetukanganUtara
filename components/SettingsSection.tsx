@@ -280,7 +280,7 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ settings, onUpdate })
                     </button>
                   </div>
                   
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                  <div className="flex flex-col gap-12">
                      {/* Zona Tugas Management */}
                      <div className="space-y-6">
                         <div className="flex items-center justify-between px-2">
@@ -321,6 +321,8 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ settings, onUpdate })
                            ))}
                         </div>
                      </div>
+
+                     <div className="h-px bg-gradient-to-r from-transparent via-slate-100 to-transparent w-full"></div>
 
                      {/* Shift Config Management */}
                      <div className="space-y-6">

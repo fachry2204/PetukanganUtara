@@ -284,7 +284,9 @@ const ScheduleManagementSection: React.FC<ScheduleManagementSectionProps> = ({ s
                           {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
                        </select>
                     </div>
+                 </div>
 
+                 <div className="space-y-6">
                     <div className="space-y-2">
                        <label className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
                          <Briefcase size={14} /> Tipe Shift
@@ -308,7 +310,7 @@ const ScheduleManagementSection: React.FC<ScheduleManagementSectionProps> = ({ s
 
                     <div className="space-y-2">
                        <label className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                         <Clock size={14} /> Jam Kerja Manual
+                         <Clock size={14} /> Jam Kerja
                        </label>
                        <div className="flex items-center gap-2">
                           <input 

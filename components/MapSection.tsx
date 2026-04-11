@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import L from 'leaflet';
-import { MapPin, Navigation, MessageCircle, ChevronDown, ChevronUp, Layers, ListTodo } from 'lucide-react';
+import { MapPin, Navigation, MessageCircle, ChevronDown, ChevronUp, Layers, ListTodo, Map } from 'lucide-react';
 import { DutyStatus, Staff, TugasPPSU } from '../types';
 import StaffTaskListModal from './StaffTaskListModal';
 
@@ -17,8 +17,10 @@ const MapSection: React.FC<MapSectionProps> = ({ tugasList, setTugasList, staffL
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
   const [isListMinimized, setIsListMinimized] = useState(true);
+  const [mapType, setMapType] = useState<'OSM' | 'GOOGLE' | 'SATELLITE'>('GOOGLE');
   
   // Legend Minimize State
   const [isLegendMinimized, setIsLegendMinimized] = useState(true);
@@ -101,6 +103,7 @@ const MapSection: React.FC<MapSectionProps> = ({ tugasList, setTugasList, staffL
         setMapFilter('ALL'); 
     } else {
         setMapFilter(status);
+        setIsListMinimized(false); // Automatically expand list when filter clicked
     }
     setSelectedStaff(null);
   };
@@ -128,11 +131,6 @@ const MapSection: React.FC<MapSectionProps> = ({ tugasList, setTugasList, staffL
       zoomControl: false 
     }).setView([-6.2367, 106.7583], 15);
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      maxZoom: 19
-    }).addTo(map);
-
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
     markersLayerRef.current = L.layerGroup().addTo(map);
@@ -152,6 +150,39 @@ const MapSection: React.FC<MapSectionProps> = ({ tugasList, setTugasList, staffL
       }
     };
   }, []);
+
+  // Update Tile Layers (Switch between OSM and Google)
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+
+    if (tileLayerRef.current) {
+        tileLayerRef.current.remove();
+    }
+
+    let url = '';
+    let attribution = '';
+    let subdomains: string[] = ['a', 'b', 'c'];
+
+    if (mapType === 'OSM') {
+        url = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+        attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+    } else if (mapType === 'GOOGLE') {
+        url = 'https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
+        attribution = '&copy; Google Maps';
+        subdomains = ['mt0', 'mt1', 'mt2', 'mt3'];
+    } else if (mapType === 'SATELLITE') {
+        url = 'https://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}';
+        attribution = '&copy; Google Maps Satellite';
+        subdomains = ['mt0', 'mt1', 'mt2', 'mt3'];
+    }
+
+    tileLayerRef.current = L.tileLayer(url, {
+        attribution,
+        subdomains,
+        maxZoom: 20
+    }).addTo(mapInstanceRef.current);
+
+  }, [mapType]);
 
   // Render Markers based on displayedStaff
   useEffect(() => {
@@ -287,13 +318,43 @@ const MapSection: React.FC<MapSectionProps> = ({ tugasList, setTugasList, staffL
                     </button>
 
                     <button 
-                       onClick={() => setMapFilter('ALL')}
+                       onClick={() => {
+                          setMapFilter('ALL');
+                          setIsListMinimized(false);
+                       }}
                        className="w-full text-center py-2 text-[9px] font-medium text-indigo-500 uppercase tracking-widest hover:underline mt-2"
                     >
                        Tampilkan Semua Personil
                     </button>
                  </div>
               )}
+           </div>
+        </div>
+
+        {/* Layer Switcher - Floating UI */}
+        <div className="absolute top-6 right-6 z-[1000] flex flex-col gap-2">
+           <div className="bg-white/90 backdrop-blur-md p-1.5 rounded-2xl shadow-xl border border-white/20 flex flex-col gap-1">
+              <button 
+                onClick={() => setMapType('OSM')}
+                className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${mapType === 'OSM' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-100'}`}
+                title="OpenStreetMap"
+              >
+                 <Map size={20} />
+              </button>
+              <button 
+                onClick={() => setMapType('GOOGLE')}
+                className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${mapType === 'GOOGLE' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-100'}`}
+                title="Google Roadmap"
+              >
+                 <Navigation size={20} />
+              </button>
+              <button 
+                onClick={() => setMapType('SATELLITE')}
+                className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${mapType === 'SATELLITE' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-100'}`}
+                title="Google Satellite"
+              >
+                 <Layers size={20} />
+              </button>
            </div>
         </div>
 
