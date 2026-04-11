@@ -3,13 +3,15 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Camera, MapPin, RefreshCw, CheckCircle2, AlertTriangle, User } from 'lucide-react';
 import { User as UserType, AttendanceRecord, AttendanceType } from '../types';
 import LocationMiniMap from './LocationMiniMap';
+import { apiService } from '../services/api';
 
 interface AttendanceSectionProps {
   user: UserType;
+  attendanceRecords?: AttendanceRecord[];
   onRecord?: (record: AttendanceRecord) => void;
 }
 
-const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user, onRecord }) => {
+const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user, attendanceRecords = [], onRecord }) => {
   const [step, setStep] = useState<'idle' | 'locating' | 'verify_location' | 'camera' | 'success'>('idle');
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [photo, setPhoto] = useState<string | null>(null);
@@ -23,10 +25,19 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user, onRecord })
   const [address, setAddress] = useState<string>('Memuat detail alamat...');
   
   const todayDateStr = new Date().toISOString().split('T')[0];
-  const [hasCheckedIn, setHasCheckedIn] = useState<boolean>(() => localStorage.getItem(`attn_${user.nik}_${todayDateStr}_Absen Masuk`) === 'true');
-  const [hasIstirahat, setHasIstirahat] = useState<boolean>(() => localStorage.getItem(`attn_${user.nik}_${todayDateStr}_Istirahat`) === 'true');
-  const [hasSelesaiIstirahat, setHasSelesaiIstirahat] = useState<boolean>(() => localStorage.getItem(`attn_${user.nik}_${todayDateStr}_Selesai Istirahat`) === 'true');
-  const [hasCheckedOut, setHasCheckedOut] = useState<boolean>(() => localStorage.getItem(`attn_${user.nik}_${todayDateStr}_Absen Pulang`) === 'true');
+  
+  const checkHasAttended = (type: string) => {
+      return attendanceRecords.some(r => 
+        r.userNik === user.nik && 
+        r.type === type && 
+        r.timestamp.startsWith(todayDateStr)
+      );
+  };
+
+  const [hasCheckedIn, setHasCheckedIn] = useState<boolean>(() => checkHasAttended('Absen Masuk'));
+  const [hasIstirahat, setHasIstirahat] = useState<boolean>(() => checkHasAttended('Istirahat'));
+  const [hasSelesaiIstirahat, setHasSelesaiIstirahat] = useState<boolean>(() => checkHasAttended('Selesai Istirahat'));
+  const [hasCheckedOut, setHasCheckedOut] = useState<boolean>(() => checkHasAttended('Absen Pulang'));
   const [istirahatDurationStr, setIstirahatDurationStr] = useState<string | null>(null);
   
   type AttendanceType = 'Absen Masuk' | 'Istirahat' | 'Selesai Istirahat' | 'Absen Pulang';
@@ -158,12 +169,20 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user, onRecord })
         setPhoto(imageSrc);
         setSubmittedTime(timeToPrint); // Freeze attendance time
         
-        // Simpan marker absensi ke local storage supaya tidak bisa absen ganda
-        localStorage.setItem(`attn_${user.nik}_${todayDateStr}_${attendanceType}`, 'true');
-        localStorage.setItem(`attn_time_${user.nik}_${todayDateStr}_${attendanceType}`, timeToPrint.toISOString());
-        localStorage.setItem(`attn_photo_${user.nik}_${todayDateStr}_${attendanceType}`, imageSrc);
-        localStorage.setItem(`attn_lat_${user.nik}_${todayDateStr}_${attendanceType}`, location.lat.toString());
-        localStorage.setItem(`attn_lng_${user.nik}_${todayDateStr}_${attendanceType}`, location.lng.toString());
+        // Simpan marker absensi ke Database
+        const newRecord = {
+            id: Date.now().toString(),
+            staffId: user.id || 'unknown',
+            type: attendanceType,
+            timestamp: timeToPrint.toISOString(),
+            latitude: location.lat,
+            longitude: location.lng,
+            photoUrl: imageSrc,
+            nik: user.nik || 'unknown',
+            staffName: user.name || user.username || 'unknown'
+        };
+
+        apiService.createAttendance(newRecord).catch(err => console.error("API Attendance Error:", err));
         
         if (attendanceType === 'Absen Masuk') setHasCheckedIn(true);
         if (attendanceType === 'Istirahat') {

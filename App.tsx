@@ -50,19 +50,14 @@ import {
   Megaphone
 } from 'lucide-react';
 import { User, SystemSettings, Report, Staff, Citizen, ServiceRequest, Role, ServiceRating, Announcement, AttendanceRecord, AttendanceType } from './types';
-import { MOCK_USERS, MOCK_REPORTS, MOCK_STAFF, MOCK_CITIZENS, MOCK_SERVICE_REQUESTS } from './constants';
+import { apiService } from './services/api';
 import PPSUSection from './components/PPSUSection';
 import DutySection from './components/DutySection';
 import StatisticsSection from './components/StatisticsSection';
 import AttendanceSection from './components/AttendanceSection';
 import MapSection from './components/MapSection';
-import DashboardSection from './components/DashboardSection';
-import MainDashboardSection from './components/MainDashboardSection';
 import SettingsSection from './components/SettingsSection';
 import UserManagementSection from './components/UserManagementSection';
-import WargaProfileSection from './components/WargaProfileSection';
-import WargaSuratSection from './components/WargaSuratSection';
-import WargaMainDashboard from './components/WargaMainDashboard'; 
 import LoginPage from './components/LoginPage';
 import PPSUTaskInputSection from './components/PPSUTaskInputSection';
 import PPSUMyReportsSection from './components/PPSUMyReportsSection';
@@ -303,7 +298,7 @@ const StaffDashboardSection: React.FC<{
 };
 
 const App: React.FC = () => {
-  const [activeSubmenu, setActiveSubmenu] = useState<Submenu>('PPSU');
+  const [activeSubmenu, setActiveSubmenu] = useState<Submenu>('DASHBOARD');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isSidebarHidden, setIsSidebarHidden] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -311,35 +306,57 @@ const App: React.FC = () => {
   const [activeSelectorTab, setActiveSelectorTab] = useState<string>('Administrator');
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false); 
   
-  const [reports, setReports] = useState<Report[]>(MOCK_REPORTS);
-  const [staffList, setStaffList] = useState<Staff[]>(MOCK_STAFF);
-  const [citizens, setCitizens] = useState<Citizen[]>(MOCK_CITIZENS);
-  const [serviceRequests, setServiceRequests] = useState<ServiceRequest[]>(MOCK_SERVICE_REQUESTS);
-  const [ratings, setRatings] = useState<ServiceRating[]>(() => loadData('app_ratings', []));
-  const [announcements, setAnnouncements] = useState<Announcement[]>(() => loadData('app_announcements', []));
-  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>(() => loadData('app_attendance', []));
+  const [reports, setReports] = useState<Report[]>([]);
+  const [staffList, setStaffList] = useState<Staff[]>([]);
+  const [citizens, setCitizens] = useState<Citizen[]>([]);
+  const [serviceRequests, setServiceRequests] = useState<ServiceRequest[]>([]);
+  const [ratings, setRatings] = useState<ServiceRating[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [receivedSosAlerts, setReceivedSosAlerts] = useState<any[]>([]);
   const [showSosAlertModal, setShowSosAlertModal] = useState(false);
   const [lastAlertCount, setLastAlertCount] = useState(0);
 
-  // Derive initial users from all data sources (excluding static dummy citizens)
-  const initialUsers: User[] = useMemo(() => {
-    const internal = MOCK_USERS;
-    
-    const ppsuUsers = MOCK_STAFF.map(s => ({
-      id: `USR-PPSU-${s.id}`,
-      name: s.namaLengkap,
-      username: s.nomorAnggota.toLowerCase(),
-      nik: s.nik,
-      role: 'PPSU' as Role,
-      avatar: s.fotoProfile,
-      password: '123'
-    }));
+  const API_BASE_URL = 'http://localhost:5000/api';
 
-    return [...internal, ...ppsuUsers];
+  const fetchAllData = async () => {
+    try {
+      const respReports = await fetch(`${API_BASE_URL}/reports`);
+      const dataReports = await respReports.json();
+      setReports(dataReports);
+
+      const respStaff = await fetch(`${API_BASE_URL}/staff`);
+      const dataStaff = await respStaff.json();
+      setStaffList(dataStaff);
+
+      const respUsers = await fetch(`${API_BASE_URL}/users`);
+      const dataUsers = await respUsers.json();
+      setUsers(dataUsers);
+
+      const respAnn = await fetch(`${API_BASE_URL}/announcements`);
+      const dataAnn = await respAnn.json();
+      setAnnouncements(dataAnn);
+
+      const respAtt = await fetch(`${API_BASE_URL}/attendance`);
+      const dataAtt = await respAtt.json();
+      setAttendanceRecords(dataAtt);
+
+      const respSos = await fetch(`${API_BASE_URL}/sos`);
+      const dataSos = await respSos.json();
+      setReceivedSosAlerts(dataSos.map((s: any) => ({ key: s.alert_key, ...s })));
+    } catch (error) {
+      console.error('Error fetching data from API:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchAllData();
+    const interval = setInterval(fetchAllData, 10000); // Polling for real-time updates
+    return () => clearInterval(interval);
   }, []);
 
-  const [users, setUsers] = useState<User[]>(() => loadData('app_users', initialUsers));
+  // Derive initial users from all data sources (excluding static dummy citizens)
+  const [users, setUsers] = useState<User[]>([]);
   
   // LOGIN STATE - Initialize as null to show Login Page first
   const [currentUser, setCurrentUser] = useState<User | null>(() => loadData('app_session', null)); 
@@ -376,42 +393,17 @@ const App: React.FC = () => {
   }, [currentUser]);
   
   useEffect(() => { saveData('app_settings', settings); }, [settings]);
-  useEffect(() => { saveData('app_users', users); }, [users]);
-  useEffect(() => { saveData('app_ratings', ratings); }, [ratings]);
-  useEffect(() => { saveData('app_announcements', announcements); }, [announcements]);
-  useEffect(() => { saveData('app_attendance', attendanceRecords); }, [attendanceRecords]);
-
-  // Admin SOS Detection Effect
+  
+  // Admin SOS Detection Effect (based on state from polling)
   useEffect(() => {
-    const handleStorage = () => {
-      if (!currentUser || currentUser.role === 'PPSU') return;
-
-      const keys = Object.keys(localStorage).filter(k => k.startsWith('sos_alert_'));
-      const alerts = keys.map(k => {
-        const val = localStorage.getItem(k);
-        return val ? { key: k, ...JSON.parse(val) } : null;
-      }).filter(Boolean);
-
-      // Only show alerts created in the last 15 minutes to avoid obsolete popups
-      const recentAlerts = alerts.filter(a => {
-         const alertTime = new Date(a.time).getTime();
-         return (Date.now() - alertTime) < 15 * 60 * 1000;
-      });
-      
-      setReceivedSosAlerts(recentAlerts);
-    };
-
-    handleStorage();
-    window.addEventListener('storage', handleStorage);
-    window.addEventListener('local-storage-update', handleStorage);
-    const interval = setInterval(handleStorage, 3000);
-
-    return () => {
-      window.removeEventListener('storage', handleStorage);
-      window.removeEventListener('local-storage-update', handleStorage);
-      clearInterval(interval);
-    };
-  }, [currentUser]);
+    if (!currentUser || currentUser.role === 'PPSU') return;
+    
+    // Auto-popup only if there are new alerts in the state
+    if (receivedSosAlerts.length > lastAlertCount) {
+        setShowSosAlertModal(true);
+    }
+    setLastAlertCount(receivedSosAlerts.length);
+  }, [receivedSosAlerts, currentUser]);
   const handleLoginSuccess = (user: User) => {
     setCurrentUser(user);
     setActiveSubmenu(user.role === 'PPSU' ? 'PPSU' : 'DASHBOARD');
@@ -436,17 +428,45 @@ const App: React.FC = () => {
 
   const sendSosSignal = () => {
       setIsSosLoading(true);
-      setTimeout(() => {
-          setIsSosLoading(false);
-          setIsSosSent(true);
-          // Simulate sending to Pimpinan / Admin via localStorage
-          localStorage.setItem(`sos_alert_${Date.now()}`, JSON.stringify({ nik: currentUser?.nik, name: currentUser?.name, time: new Date().toISOString() }));
-          window.dispatchEvent(new Event('local-storage-update'));
-          setTimeout(() => {
-              setIsSosActive(false);
-              setIsSosSent(false);
-          }, 3000);
-      }, 1500);
+      
+      // Simulate GPS or get from browser
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+          const { latitude, longitude } = pos.coords;
+          try {
+              await apiService.createSos({
+                  key: `sos_alert_${Date.now()}`,
+                  nik: currentUser?.nik,
+                  name: currentUser?.name,
+                  time: new Date().toISOString(),
+                  latitude,
+                  longitude
+              });
+              setIsSosLoading(false);
+              setIsSosSent(true);
+              setTimeout(() => {
+                  setIsSosActive(false);
+                  setIsSosSent(false);
+              }, 3000);
+          } catch (error) {
+              console.error('Failed to send SOS:', error);
+              setIsSosLoading(false);
+          }
+      }, (err) => {
+          // Fallback if no GPS
+          apiService.createSos({
+              key: `sos_alert_${Date.now()}`,
+              nik: currentUser?.nik,
+              name: currentUser?.name,
+              time: new Date().toISOString()
+          }).then(() => {
+              setIsSosLoading(false);
+              setIsSosSent(true);
+              setTimeout(() => {
+                  setIsSosActive(false);
+                  setIsSosSent(false);
+              }, 3000);
+          });
+      });
   };
 
   const handleLogoutClick = () => {
@@ -486,10 +506,13 @@ const App: React.FC = () => {
   }
 
   const renderContent = () => {
-    const handleResolveSos = (key: string) => {
-        localStorage.removeItem(key);
-        setReceivedSosAlerts(prev => prev.filter(a => a.key !== key));
-        window.dispatchEvent(new Event('local-storage-update'));
+    const handleResolveSos = async (key: string) => {
+        try {
+            await apiService.resolveSos(key);
+            setReceivedSosAlerts(prev => prev.filter(a => a.key !== key));
+        } catch (error) {
+            console.error('Failed to resolve SOS:', error);
+        }
     };
     
     switch (activeSubmenu) {
@@ -532,7 +555,11 @@ const App: React.FC = () => {
       case 'INPUT_TUGAS':
         return <PPSUTaskInputSection user={currentUser} reports={reports} setReports={setReports} />;
       case 'ABSENSI':
-        return <AttendanceSection user={currentUser} onRecord={(rec) => setAttendanceRecords([rec, ...attendanceRecords])} />;
+        return <AttendanceSection 
+                  user={currentUser} 
+                  attendanceRecords={attendanceRecords}
+                  onRecord={(rec) => setAttendanceRecords([rec, ...attendanceRecords])} 
+               />;
         
       default:
         // Default fallback to Dashboard for Admin, and PPSUSection for compatibility
@@ -970,7 +997,7 @@ const App: React.FC = () => {
     )}
 
     {/* Admin Receiver SOS Modal */}
-    {currentUser?.role !== 'PPSU' && receivedSosAlerts.length > 0 && (
+    {currentUser?.role !== 'PPSU' && showSosAlertModal && receivedSosAlerts.length > 0 && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center bg-slate-900/90 backdrop-blur-md p-6">
            <div className="bg-red-600 w-full max-w-md rounded-[2.5rem] p-8 flex flex-col items-center text-center shadow-2xl relative overflow-hidden animate-in fade-in zoom-in duration-300">
                <div className="absolute inset-0 bg-red-500 animate-[pulse_1s_infinite] mix-blend-screen opacity-50"></div>
@@ -997,12 +1024,10 @@ const App: React.FC = () => {
                           </div>
                           <button onClick={() => {
                              setActiveSubmenu('MAP_PPSU');
-                             localStorage.removeItem(alert.key);
-                             setReceivedSosAlerts(prev => prev.filter(a => a.key !== alert.key));
-                             window.dispatchEvent(new Event('local-storage-update'));
+                             setShowSosAlertModal(false);
                           }} className="bg-red-50 hover:bg-red-100 text-red-600 p-3 rounded-xl transition-all shadow-sm border border-red-100 flex flex-col items-center" title="Lihat Lokasi GPS">
                               <MapPinned size={20} />
-                              <span className="text-[8px] font-bold uppercase mt-1">Detail</span>
+                              <span className="text-[8px] font-bold uppercase mt-1">Peta</span>
                           </button>
                        </div>
                    ))}
@@ -1011,13 +1036,11 @@ const App: React.FC = () => {
                <div className="flex w-full relative z-10">
                    <button 
                        onClick={() => {
-                           receivedSosAlerts.forEach(a => localStorage.removeItem(a.key));
-                           setReceivedSosAlerts([]);
-                           window.dispatchEvent(new Event('local-storage-update'));
+                           setShowSosAlertModal(false);
                        }} 
                        className="w-full py-4 bg-red-800 hover:bg-red-900 text-white font-black rounded-xl transition-all uppercase tracking-widest text-sm shadow-xl"
                    >
-                       Tutup Semua Peringatan
+                       Tutup Panel Darurat
                    </button>
                </div>
            </div>

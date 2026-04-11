@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
-import { AttendanceRecord, Report, User, AttendanceType } from '../types';
-import { Camera, ClipboardList, MapPin, Search, Calendar, Filter, FileText, ChevronRight, Eye } from 'lucide-react';
+import { AttendanceRecord, Report, User, AttendanceType, ReportStatus } from '../types';
+import { Camera, ClipboardList, MapPin, Search, Calendar, Filter, FileText, ChevronRight, Eye, CheckCircle2 } from 'lucide-react';
+import { apiService } from '../services/api';
 
 interface AdminReportsSectionProps {
   mode: 'ABSEN' | 'TUGAS' | 'FULL_REPORT';
   attendanceRecords: AttendanceRecord[];
   reports: Report[];
+  onUpdateReport?: (updated: Report) => void;
 }
 
-const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attendanceRecords, reports }) => {
+const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attendanceRecords, reports, onUpdateReport }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('ALL');
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
@@ -212,12 +214,12 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
                     </td>
                     <td className="py-4 px-4">
                        <span className={`text-[9px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest shadow-sm ${
-                         rep.status === 'Laporan Selesai' || rep.status === 'Verified' ? 'bg-emerald-500 text-white' :
-                         rep.status === 'Menunggu Verifikasi' || rep.status === 'Pending' ? 'bg-orange-400 text-white' :
+                         rep.status === ReportStatus.COMPLETED || rep.status === ReportStatus.VERIFIED ? 'bg-emerald-500 text-white' :
+                         rep.status === ReportStatus.VERIFICATION ? 'bg-orange-400 text-white' :
                          'bg-slate-200 text-slate-600'
                        }`}>
-                         {rep.status === 'Menunggu Verifikasi' || rep.status === 'Pending' ? 'Pending' : 
-                          rep.status === 'Laporan Selesai' || rep.status === 'Verified' ? 'Verified' : rep.status}
+                         {rep.status === ReportStatus.VERIFICATION ? 'Pending' : 
+                          rep.status === ReportStatus.COMPLETED || rep.status === ReportStatus.VERIFIED ? 'Verified' : rep.status}
                        </span>
                     </td>
                     <td className="py-4 px-6 text-center">

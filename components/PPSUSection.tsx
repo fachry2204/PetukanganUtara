@@ -25,6 +25,7 @@ import { Staff, Gender, User } from '../types';
 import ProfileModal from './ProfileModal';
 import AddStaffModal from './AddStaffModal';
 import DeleteModal from './DeleteModal';
+import { apiService } from '../services/api';
 
 interface PPSUSectionProps {
   user: User;
@@ -84,22 +85,31 @@ const PPSUSection: React.FC<PPSUSectionProps> = ({ user, staffList, setStaffList
   };
 
   // Logic to save new or updated staff
-  const handleSaveStaff = (staffData: Staff) => {
-    if (editingStaff) {
-      // Update existing
-      setStaffList(prev => prev.map(item => item.id === staffData.id ? staffData : item));
-    } else {
-      // Add new
-      setStaffList(prev => [staffData, ...prev]);
+  const handleSaveStaff = async (staffData: Staff) => {
+    try {
+      if (editingStaff) {
+        await apiService.updateStaff(staffData);
+        setStaffList(prev => prev.map(item => item.id === staffData.id ? staffData : item));
+      } else {
+        await apiService.createStaff(staffData);
+        setStaffList(prev => [staffData, ...prev]);
+      }
+      setIsAddModalOpen(false);
+      setEditingStaff(null);
+    } catch (error) {
+      console.error("Failed to save staff:", error);
     }
-    setIsAddModalOpen(false);
-    setEditingStaff(null);
   };
 
   // Logic to delete staff
-  const handleDeleteStaff = (id: string) => {
-    setStaffList(prev => prev.filter(item => item.id !== id));
-    setIsDeleteModalOpen(null);
+  const handleDeleteStaff = async (id: string) => {
+    try {
+        await apiService.deleteStaff(id);
+        setStaffList(prev => prev.filter(item => item.id !== id));
+        setIsDeleteModalOpen(null);
+    } catch (error) {
+        console.error("Failed to delete staff:", error);
+    }
   };
 
   // Advanced Pagination Button Logic

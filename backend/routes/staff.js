@@ -56,4 +56,40 @@ router.post('/', async (req, res) => {
     }
 });
 
+// UPDATE STAFF
+router.put('/:id', async (req, res) => {
+    const { id } = req.params;
+    const s = req.body;
+    try {
+        const sql = `
+            UPDATE staff SET 
+            nik = ?, nomor_anggota = ?, nama_lengkap = ?, jenis_kelamin = ?, 
+            status = ?, foto_profile = ?, alamat_lengkap = ?, nomor_whatsapp = ?, 
+            latitude = ?, longitude = ?, total_tugas_berhasil = ?
+            WHERE id = ?
+        `;
+        await db.query(sql, [
+            s.nik, s.nomorAnggota, s.namaLengkap, s.jenisKelamin, 
+            s.status, s.fotoProfile, s.alamatLengkap, s.nomorWhatsapp, 
+            s.latitude, s.longitude, s.totalTugasBerhasil, id
+        ]);
+        cache.del('all_staff');
+        res.json({ message: 'Staff updated' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// DELETE STAFF
+router.delete('/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        await db.query('DELETE FROM staff WHERE id = ?', [id]);
+        cache.del('all_staff');
+        res.json({ message: 'Staff deleted' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;

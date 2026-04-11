@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Announcement, User, Role } from '../types';
 import { Send, Megaphone, Trash2, Users } from 'lucide-react';
+import { apiService } from '../services/api';
 
 interface AnnouncementSectionProps {
   user: User;
@@ -18,7 +19,7 @@ const AnnouncementSection: React.FC<AnnouncementSectionProps> = ({ user, users, 
 
   const availableRoles: Role[] = ['Administrator', 'Admin', 'Pimpinan', 'Staff Kelurahan', 'Operator', 'PPSU', 'Karang Taruna'];
 
-  const handlePost = (e: React.FormEvent) => {
+  const handlePost = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !content) return;
 
@@ -35,12 +36,17 @@ const AnnouncementSection: React.FC<AnnouncementSectionProps> = ({ user, users, 
       targetUserId: targetType === 'USER' ? targetUserId : undefined,
     };
 
-    setAnnouncements([newAnnouncement, ...announcements]);
-    setTitle('');
-    setContent('');
-    setTargetType('ALL');
-    setTargetRole('');
-    setTargetUserId('');
+    try {
+        await apiService.createAnnouncement(newAnnouncement);
+        setAnnouncements([newAnnouncement, ...announcements]);
+        setTitle('');
+        setContent('');
+        setTargetType('ALL');
+        setTargetRole('');
+        setTargetUserId('');
+    } catch (error) {
+        console.error("Failed to post announcement:", error);
+    }
   };
 
   const handleDelete = (id: string) => {

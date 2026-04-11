@@ -52,21 +52,28 @@ export const apiService = {
     createReport: (report: Report) => postData('/reports', report),
     updateReport: (report: Report) => putData(`/reports/${report.id}`, report),
 
-    // --- CITIZENS ---
-    getCitizens: (): Promise<Citizen[]> => fetchData('/citizens'),
-    createCitizen: (citizen: Citizen) => postData('/citizens', citizen),
-    // updateCitizen: (citizen: Citizen) => putData(`/citizens/${citizen.id}`, citizen),
-
     // --- STAFF ---
     getStaff: (): Promise<Staff[]> => fetchData('/staff'),
-    // createStaff...
-    // updateStaff...
-
-    // --- SERVICES ---
-    getServices: (): Promise<ServiceRequest[]> => fetchData('/services'),
-    createService: (request: ServiceRequest) => postData('/services', request),
-    updateService: (request: ServiceRequest) => putData(`/services/${request.id}`, request),
+    createStaff: (staff: Staff) => postData('/staff', staff),
+    updateStaff: (staff: Staff) => putData(`/staff/${staff.id}`, staff),
+    deleteStaff: (id: string) => fetch(`${(import.meta as any).env.VITE_API_URL || 'http://localhost:5000/api'}/staff/${id}`, { method: 'DELETE' }).then(r => r.json()),
 
     // --- USERS ---
-    // getUsers...
+    getUsers: (): Promise<User[]> => fetchData('/users'),
+    createUser: (user: User) => postData('/users', user),
+    updateUser: (user: User) => putData(`/users/${user.id}`, user),
+    deleteUser: (id: string) => fetch(`${(import.meta as any).env.VITE_API_URL || 'http://localhost:5000/api'}/users/${id}`, { method: 'DELETE' }).then(r => r.json()),
+
+    // --- ATTENDANCE ---
+    getAttendance: (): Promise<any[]> => fetchData('/attendance'),
+    createAttendance: (record: any) => postData('/attendance', record),
+
+    // --- ANNOUNCEMENTS ---
+    getAnnouncements: (): Promise<any[]> => fetchData('/announcements'),
+    createAnnouncement: (ann: any) => postData('/announcements', ann),
+
+    // --- SOS ---
+    getSos: (): Promise<any[]> => fetchData('/sos'),
+    createSos: (sos: any) => postData('/sos', sos),
+    resolveSos: (key: string) => putData(`/sos/${key}`, {})
 };

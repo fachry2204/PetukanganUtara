@@ -16,6 +16,9 @@ app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 const reportsRoutes = require('./routes/reports');
 const staffRoutes = require('./routes/staff');
 const usersRoutes = require('./routes/users');
+const attendanceRoutes = require('./routes/attendance');
+const announcementsRoutes = require('./routes/announcements');
+const sosRoutes = require('./routes/sos');
 
 // API Khusus Waktu Server (Anti-Mock Time)
 app.get('/api/time', (req, res) => {
@@ -26,6 +29,9 @@ app.get('/api/time', (req, res) => {
 app.use('/api/reports', reportsRoutes);
 app.use('/api/staff', staffRoutes);
 app.use('/api/users', usersRoutes);
+app.use('/api/attendance', attendanceRoutes);
+app.use('/api/announcements', announcementsRoutes);
+app.use('/api/sos', sosRoutes);
 
 // Global Error Handler for better monitoring (Scaling)
 app.use((err, req, res, next) => {

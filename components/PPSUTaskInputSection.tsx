@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Camera, MapPin, RefreshCw, CheckCircle2, AlertTriangle, Send, ShieldCheck, ClipboardList } from 'lucide-react';
 import { User as UserType, Report, Staff } from '../types';
 import LocationMiniMap from './LocationMiniMap';
+import { apiService } from '../services/api';
 
 interface PPSUTaskInputSectionProps {
   user: UserType;
@@ -169,7 +170,7 @@ const PPSUTaskInputSection: React.FC<PPSUTaskInputSectionProps> = ({ user, repor
     }
   };
 
-  const takePhotoAndSubmit = () => {
+  const takePhotoAndSubmit = async () => {
     if (videoRef.current && location) {
       const canvas = document.createElement('canvas');
       canvas.width = videoRef.current.videoWidth;
@@ -222,7 +223,7 @@ const PPSUTaskInputSection: React.FC<PPSUTaskInputSectionProps> = ({ user, repor
             location: address,
             latitude: location.lat,
             longitude: location.lng,
-            status: 'Laporan Baru' as any, // using as any to bypass strict enum match for now if enum is not exported directly, or use the string if it matches 'Laporan Baru'
+            status: 'Laporan Baru' as any, 
             timestamp: timestampStr,
             photoUrl: imageSrc,
             priority: 'Medium',
@@ -234,9 +235,14 @@ const PPSUTaskInputSection: React.FC<PPSUTaskInputSectionProps> = ({ user, repor
             }]
         };
 
-        // Assume we do API Call here to backend (but for UI demo state update)
-        setReports([newReport, ...reports]);
-        setStep('success');
+        try {
+            await apiService.createReport(newReport);
+            setReports([newReport, ...reports]);
+            setStep('success');
+        } catch (error) {
+            console.error('Failed to submit report:', error);
+            setError('Gagal mengirim laporan ke server. Silahkan coba lagi.');
+        }
       }
     }
   };

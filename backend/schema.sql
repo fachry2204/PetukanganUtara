@@ -50,3 +50,38 @@ CREATE TABLE IF NOT EXISTS users (
   avatar TEXT,
   password VARCHAR(255)
 );
+
+CREATE TABLE IF NOT EXISTS attendance (
+  id VARCHAR(50) PRIMARY KEY,
+  staff_id VARCHAR(50),
+  type VARCHAR(50),
+  timestamp DATETIME,
+  latitude DOUBLE,
+  longitude DOUBLE,
+  photo_url TEXT,
+  nik VARCHAR(50),
+  staff_name VARCHAR(255)
+);
+
+CREATE TABLE IF NOT EXISTS announcements (
+  id VARCHAR(50) PRIMARY KEY,
+  title VARCHAR(255),
+  content TEXT,
+  target_role VARCHAR(100),
+  target_user_id VARCHAR(50),
+  author_name VARCHAR(255),
+  author_role VARCHAR(100),
+  date DATETIME,
+  priority VARCHAR(50)
+);
+
+CREATE TABLE IF NOT EXISTS sos_alerts (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  alert_key VARCHAR(100),
+  nik VARCHAR(50),
+  name VARCHAR(255),
+  time DATETIME,
+  latitude DOUBLE,
+  longitude DOUBLE,
+  is_resolved BOOLEAN DEFAULT FALSE
+);
