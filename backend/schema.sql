@@ -14,30 +14,24 @@ CREATE TABLE IF NOT EXISTS staff (
   tanggal_masuk DATE
 );
 
-CREATE TABLE IF NOT EXISTS reports (
+CREATE TABLE IF NOT EXISTS tugas_ppsu (
   id VARCHAR(50) PRIMARY KEY,
-  ticket_number VARCHAR(100),
-  title TEXT,
-  description TEXT,
-  category VARCHAR(100),
-  reporter_name VARCHAR(255),
-  reporter_nik VARCHAR(50),
-  reporter_phone VARCHAR(50),
-  location TEXT,
+  judul_tugas TEXT,
+  deskripsi TEXT,
+  kategori VARCHAR(100),
+  lokasi TEXT,
   latitude DOUBLE,
   longitude DOUBLE,
   status VARCHAR(50),
   timestamp DATETIME,
-  photo_url TEXT,
+  foto_sebelum TEXT,
+  foto_sesudah TEXT,
+  staff_id VARCHAR(50),
   priority VARCHAR(50),
   logs JSON,
-  photo_arrival TEXT,
-  photo_completion TEXT,
-  photo_revision TEXT,
-  rejection_reason TEXT,
-  assigned_staff_ids JSON,
-  estimation_time VARCHAR(100),
-  gps_arrival JSON
+  alasan_penolakan TEXT,
+  reporter_name VARCHAR(255),
+  reporter_nik VARCHAR(50)
 );
 
 CREATE TABLE IF NOT EXISTS users (

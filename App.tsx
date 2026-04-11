@@ -49,7 +49,7 @@ import {
   ListTodo,
   Megaphone
 } from 'lucide-react';
-import { User, SystemSettings, Report, Staff, Citizen, ServiceRequest, Role, ServiceRating, Announcement, AttendanceRecord, AttendanceType } from './types';
+import { User, SystemSettings, TugasPPSU, Staff, Citizen, ServiceRequest, Role, ServiceRating, Announcement, AttendanceRecord, AttendanceType } from './types';
 import { apiService } from './services/api';
 import PPSUSection from './components/PPSUSection';
 import DutySection from './components/DutySection';
@@ -89,13 +89,13 @@ const saveData = (key: string, data: any) => {
 const StaffDashboardSection: React.FC<{ 
   user: User, 
   staff: Staff[], 
-  reports: Report[], 
+  tugasList: TugasPPSU[], 
   announcements: Announcement[],
   sosAlerts: any[],
   onResolveSos: (key: string) => void,
   onViewLocation: () => void 
-}> = ({ user, staff, reports, announcements, sosAlerts, onResolveSos, onViewLocation }) => {
-  const pendingReports = reports.filter(r => r.status === 'Menunggu Verifikasi');
+}> = ({ user, staff, tugasList, announcements, sosAlerts, onResolveSos, onViewLocation }) => {
+  const pendingTugas = tugasList.filter(r => r.status === 'Menunggu Verifikasi');
   const malePPSU = staff.filter(s => s.jenisKelamin === 'Laki-Laki').length;
   const femalePPSU = staff.filter(s => s.jenisKelamin === 'Perempuan').length;
   const recentAnnouncements = announcements.slice(0, 3); // show latest 3
@@ -249,10 +249,10 @@ const StaffDashboardSection: React.FC<{
       </div>
 
       {/* Tabel Tugas Pending Verifikasi */}
-      <div className="bg-white rounded-[2rem] box-border border border-slate-100 shadow-sm p-6 overflow-hidden">
+        <div className="bg-white rounded-[2rem] box-border border border-slate-100 shadow-sm p-6 overflow-hidden">
          <h3 className="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
             <ClipboardList className="text-orange-500" /> Tugas PPSU - Pending Verifikasi
-            <span className="bg-orange-100 text-orange-600 text-xs px-2 py-1 rounded-lg ml-auto">{pendingReports.length} Menunggu</span>
+            <span className="bg-orange-100 text-orange-600 text-xs px-2 py-1 rounded-lg ml-auto">{pendingTugas.length} Menunggu</span>
          </h3>
          <div className="overflow-x-auto custom-scrollbar pb-2">
             <table className="w-full text-left text-sm border-collapse">
@@ -261,31 +261,31 @@ const StaffDashboardSection: React.FC<{
                      <th className="pb-3 px-4 text-center">No</th>
                      <th className="pb-3">Data Pelapor</th>
                      <th className="pb-3">Kategori</th>
-                     <th className="pb-3">Judul Masalah</th>
+                     <th className="pb-3">Judul Tugas</th>
                      <th className="pb-3">Waktu Laporan</th>
                   </tr>
                </thead>
                <tbody>
-                  {pendingReports.length === 0 ? (
+                  {pendingTugas.length === 0 ? (
                      <tr>
                         <td colSpan={5} className="py-12 text-center text-slate-400">
                            <ShieldCheck size={48} className="mx-auto mb-3 opacity-20" />
-                           <p className="font-semibold">Bagus! Tidak ada laporan yang menunggu verifikasi.</p>
+                           <p className="font-semibold">Bagus! Tidak ada tugas yang menunggu verifikasi.</p>
                         </td>
                      </tr>
                   ) : (
-                     pendingReports.map((report, idx) => (
-                        <tr key={report.id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                     pendingTugas.map((tugas, idx) => (
+                        <tr key={tugas.id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
                            <td className="py-4 px-4 text-center font-bold text-slate-400">{idx + 1}</td>
                            <td className="py-4">
-                              <p className="font-bold text-slate-800">{report.reporterName}</p>
-                              {report.reporterNik && <p className="text-[10px] text-slate-400 font-mono">NIK: {report.reporterNik}</p>}
+                              <p className="font-bold text-slate-800">{tugas.reporterName}</p>
+                              {tugas.reporterNik && <p className="text-[10px] text-slate-400 font-mono">NIK: {tugas.reporterNik}</p>}
                            </td>
                            <td className="py-4">
-                              <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider">{report.category}</span>
+                              <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider">{tugas.kategori}</span>
                            </td>
-                           <td className="py-4 font-medium text-slate-700 max-w-xs truncate" title={report.title}>{report.title}</td>
-                           <td className="py-4 text-xs font-bold text-slate-500">{new Date(report.timestamp).toLocaleString('id-ID')}</td>
+                           <td className="py-4 font-medium text-slate-700 max-w-xs truncate" title={tugas.judulTugas}>{tugas.judulTugas}</td>
+                           <td className="py-4 text-xs font-bold text-slate-500">{new Date(tugas.timestamp).toLocaleString('id-ID')}</td>
                         </tr>
                      ))
                   )}
@@ -306,7 +306,7 @@ const App: React.FC = () => {
   const [activeSelectorTab, setActiveSelectorTab] = useState<string>('Administrator');
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false); 
   
-  const [reports, setReports] = useState<Report[]>([]);
+  const [tugasList, setTugasList] = useState<TugasPPSU[]>([]);
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [citizens, setCitizens] = useState<Citizen[]>([]);
   const [serviceRequests, setServiceRequests] = useState<ServiceRequest[]>([]);
@@ -321,29 +321,23 @@ const App: React.FC = () => {
 
   const fetchAllData = async () => {
     try {
-      const respReports = await fetch(`${API_BASE_URL}/reports`);
-      const dataReports = await respReports.json();
-      setReports(dataReports);
+      const dataReports = await apiService.getTugasPPSU();
+      if (dataReports) setTugasList(dataReports);
 
-      const respStaff = await fetch(`${API_BASE_URL}/staff`);
-      const dataStaff = await respStaff.json();
-      setStaffList(dataStaff);
+      const dataStaff = await apiService.getStaff();
+      if (dataStaff) setStaffList(dataStaff);
 
-      const respUsers = await fetch(`${API_BASE_URL}/users`);
-      const dataUsers = await respUsers.json();
-      setUsers(dataUsers);
+      const dataUsers = await apiService.getUsers();
+      if (dataUsers) setUsers(dataUsers);
 
-      const respAnn = await fetch(`${API_BASE_URL}/announcements`);
-      const dataAnn = await respAnn.json();
-      setAnnouncements(dataAnn);
+      const dataAnn = await apiService.getAnnouncements();
+      if (dataAnn) setAnnouncements(dataAnn);
 
-      const respAtt = await fetch(`${API_BASE_URL}/attendance`);
-      const dataAtt = await respAtt.json();
-      setAttendanceRecords(dataAtt);
+      const dataAtt = await apiService.getAttendance();
+      if (dataAtt) setAttendanceRecords(dataAtt);
 
-      const respSos = await fetch(`${API_BASE_URL}/sos`);
-      const dataSos = await respSos.json();
-      setReceivedSosAlerts(dataSos.map((s: any) => ({ key: s.alert_key, ...s })));
+      const dataSos = await apiService.getSos();
+      if (dataSos) setReceivedSosAlerts(dataSos.map((s: any) => ({ key: s.alert_key, ...s })));
     } catch (error) {
       console.error('Error fetching data from API:', error);
     }
@@ -522,7 +516,7 @@ const App: React.FC = () => {
            <StaffDashboardSection 
               user={currentUser} 
               staff={staffList} 
-              reports={reports} 
+              tugasList={tugasList} 
               announcements={announcements} 
               sosAlerts={receivedSosAlerts}
               onResolveSos={handleResolveSos}
@@ -534,18 +528,18 @@ const App: React.FC = () => {
       case 'PPSU': // Data PPSU
         return <PPSUSection user={currentUser} staffList={staffList} setStaffList={setStaffList} />;
       case 'ADMIN_ABSEN': // Data Absen PPSU
-        return <AdminReportsSection mode="ABSEN" attendanceRecords={attendanceRecords} reports={reports} />;
+        return <AdminReportsSection mode="ABSEN" attendanceRecords={attendanceRecords} tugasList={tugasList} />;
       case 'ADMIN_TUGAS': // Data Tugas PPSU
-        return <AdminReportsSection mode="TUGAS" attendanceRecords={attendanceRecords} reports={reports} />;
+        return <AdminReportsSection mode="TUGAS" attendanceRecords={attendanceRecords} tugasList={tugasList} />;
       case 'MONITORING':
-        return <DutySection user={currentUser} reports={reports} setReports={setReports} staffList={staffList} setStaffList={setStaffList} />;
+        return <DutySection user={currentUser} tugasList={tugasList} setTugasList={setTugasList} staffList={staffList} setStaffList={setStaffList} />;
       case 'MAP_PPSU': // MAP ANGGOTA
-        return <MapSection reports={reports} setReports={setReports} staffList={staffList} setStaffList={setStaffList} sosAlerts={receivedSosAlerts} />;
+        return <MapSection tugasList={tugasList} setTugasList={setTugasList} staffList={staffList} setStaffList={setStaffList} sosAlerts={receivedSosAlerts} />;
       case 'STATS': // Report (General for Admin, Specific for PPSU)
         if (currentUser.role === 'PPSU') {
-           return <PPSUMyReportsSection user={currentUser} reports={reports} />;
+           return <PPSUMyReportsSection user={currentUser} tugasList={tugasList} />;
         }
-        return <AdminReportsSection mode="FULL_REPORT" attendanceRecords={attendanceRecords} reports={reports} />;
+        return <AdminReportsSection mode="FULL_REPORT" attendanceRecords={attendanceRecords} tugasList={tugasList} />;
       case 'USER_MANAGEMENT':
         return <UserManagementSection users={users} setUsers={setUsers} initialTab="SEMUA" />;
       case 'SETTINGS':
@@ -553,7 +547,7 @@ const App: React.FC = () => {
 
       /* PPSU Mobile Routes */
       case 'INPUT_TUGAS':
-        return <PPSUTaskInputSection user={currentUser} reports={reports} setReports={setReports} />;
+        return <PPSUTaskInputSection user={currentUser} tugasList={tugasList} setTugasList={setTugasList} />;
       case 'ABSENSI':
         return <AttendanceSection 
                   user={currentUser} 
@@ -568,7 +562,7 @@ const App: React.FC = () => {
            <StaffDashboardSection 
               user={currentUser} 
               staff={staffList} 
-              reports={reports} 
+              tugasList={tugasList} 
               announcements={announcements} 
               sosAlerts={receivedSosAlerts}
               onResolveSos={handleResolveSos}

@@ -1,20 +1,20 @@
 import React, { useState } from 'react';
-import { AttendanceRecord, Report, User, AttendanceType, ReportStatus } from '../types';
+import { AttendanceRecord, TugasPPSU, User, AttendanceType, ReportStatus } from '../types';
 import { Camera, ClipboardList, MapPin, Search, Calendar, Filter, FileText, ChevronRight, Eye, CheckCircle2 } from 'lucide-react';
 import { apiService } from '../services/api';
 
 interface AdminReportsSectionProps {
   mode: 'ABSEN' | 'TUGAS' | 'FULL_REPORT';
   attendanceRecords: AttendanceRecord[];
-  reports: Report[];
-  onUpdateReport?: (updated: Report) => void;
+  tugasList: TugasPPSU[];
+  onUpdateTugas?: (updated: TugasPPSU) => void;
 }
 
-const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attendanceRecords, reports, onUpdateReport }) => {
+const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attendanceRecords, tugasList, onUpdateTugas }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('ALL');
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
-  const [selectedTask, setSelectedTask] = useState<Report | null>(null);
+  const [selectedTask, setSelectedTask] = useState<TugasPPSU | null>(null);
 
   // Filter logic for Attendance
   const filteredAttendance = attendanceRecords.filter(rec => {
@@ -24,10 +24,10 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
   });
 
   // Filter logic for Tasks
-  const filteredTasks = reports.filter(rep => {
-    const matchesSearch = rep.reporterName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         rep.title.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = filterType === 'ALL' || rep.category === filterType;
+  const filteredTasks = tugasList.filter(t => {
+    const matchesSearch = t.reporterName.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                         t.judulTugas.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesType = filterType === 'ALL' || t.kategori === filterType;
     return matchesSearch && matchesType;
   });
 
@@ -158,7 +158,7 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
              onChange={(e) => setFilterType(e.target.value)}
            >
               <option value="ALL">Semua Kategori</option>
-              {Array.from(new Set(reports.map(r => r.category))).map(cat => (
+              {Array.from(new Set(tugasList.map(t => t.kategori))).map(cat => (
                 <option key={cat} value={cat}>{cat}</option>
               ))}
            </select>
@@ -189,19 +189,19 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
                   </td>
                 </tr>
               ) : (
-                filteredTasks.map((rep, idx) => (
-                  <tr key={rep.id} className="hover:bg-slate-50/80 transition-colors group">
+                filteredTasks.map((t, idx) => (
+                  <tr key={t.id} className="hover:bg-slate-50/80 transition-colors group">
                     <td className="py-4 px-6 text-center font-black text-slate-300 group-hover:text-indigo-400 transition-colors">{idx + 1}</td>
                     <td className="py-4 px-4">
-                       <p className="font-black text-slate-800 text-xs tracking-tight line-clamp-1 uppercase">{rep.title}</p>
-                       <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-slate-100 text-slate-400 uppercase tracking-widest">{rep.category}</span>
+                       <p className="font-black text-slate-800 text-xs tracking-tight line-clamp-1 uppercase">{t.judulTugas}</p>
+                       <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-slate-100 text-slate-400 uppercase tracking-widest">{t.kategori}</span>
                     </td>
                     <td className="py-4 px-4">
-                       <p className="font-bold text-slate-700 text-xs">{rep.reporterName}</p>
-                       <p className="text-[9px] font-mono text-slate-400 font-bold">{rep.reporterNik}</p>
+                       <p className="font-bold text-slate-700 text-xs">{t.reporterName}</p>
+                       <p className="text-[9px] font-mono text-slate-400 font-bold">{t.reporterNik}</p>
                     </td>
                     <td className="py-4 px-4 max-w-[200px]">
-                       <p className="text-[10px] text-slate-500 leading-normal line-clamp-1 font-medium" title={rep.location}>{rep.location}</p>
+                       <p className="text-[10px] text-slate-500 leading-normal line-clamp-1 font-medium" title={t.lokasi}>{t.lokasi}</p>
                     </td>
                     <td className="py-4 px-4 text-center">
                        <button className="text-rose-500 hover:bg-rose-50 p-2 rounded-lg transition-all shadow-sm border border-rose-100">
@@ -209,22 +209,22 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
                        </button>
                     </td>
                     <td className="py-4 px-4 font-bold text-slate-600 text-[10px]">
-                       {new Date(rep.timestamp).toLocaleDateString('id-ID')} <br/>
-                       <span className="text-[9px] text-slate-400">{new Date(rep.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
+                       {new Date(t.timestamp).toLocaleDateString('id-ID')} <br/>
+                       <span className="text-[9px] text-slate-400">{new Date(t.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
                     </td>
                     <td className="py-4 px-4">
                        <span className={`text-[9px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest shadow-sm ${
-                         rep.status === ReportStatus.COMPLETED || rep.status === ReportStatus.VERIFIED ? 'bg-emerald-500 text-white' :
-                         rep.status === ReportStatus.VERIFICATION ? 'bg-orange-400 text-white' :
+                         t.status === ReportStatus.COMPLETED || t.status === ReportStatus.VERIFIED ? 'bg-emerald-500 text-white' :
+                         t.status === ReportStatus.VERIFICATION ? 'bg-orange-400 text-white' :
                          'bg-slate-200 text-slate-600'
                        }`}>
-                         {rep.status === ReportStatus.VERIFICATION ? 'Pending' : 
-                          rep.status === ReportStatus.COMPLETED || rep.status === ReportStatus.VERIFIED ? 'Verified' : rep.status}
+                         {t.status === ReportStatus.VERIFICATION ? 'Pending' : 
+                          t.status === ReportStatus.COMPLETED || t.status === ReportStatus.VERIFIED ? 'Verified' : t.status}
                        </span>
                     </td>
                     <td className="py-4 px-6 text-center">
                        <button 
-                         onClick={() => setSelectedTask(rep)}
+                         onClick={() => setSelectedTask(t)}
                          className="p-2 text-indigo-500 hover:bg-indigo-50 rounded-lg transition-all border border-indigo-100 shadow-sm" title="Lihat Detail Tugas">
                           <Eye size={18} />
                        </button>
@@ -288,15 +288,15 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
                     <button className="text-[10px] font-black uppercase text-indigo-600 hover:underline">Lihat Semua</button>
                  </div>
                  <div className="space-y-3">
-                    {reports.slice(0, 3).map(rep => (
-                       <div key={rep.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                    {tugasList.slice(0, 3).map(t => (
+                       <div key={t.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100">
                           <div className="flex items-center gap-3">
                              <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center text-orange-600">
                                 <FileText size={14} />
                              </div>
                              <div>
-                                <p className="text-xs font-black text-slate-700 line-clamp-1">{rep.title}</p>
-                                <p className="text-[10px] font-bold text-slate-400">{rep.category}</p>
+                                <p className="text-xs font-black text-slate-700 line-clamp-1">{t.judulTugas}</p>
+                                <p className="text-[10px] font-bold text-slate-400">{t.kategori}</p>
                              </div>
                           </div>
                           <ChevronRight size={14} className="text-slate-300" />
@@ -330,7 +330,7 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
                <div className="bg-indigo-600 p-8 text-white flex justify-between items-start shrink-0">
                   <div>
                      <span className="text-[10px] font-black uppercase tracking-[0.2em] bg-white/20 px-3 py-1 rounded-full border border-white/20 mb-3 inline-block">Detail Tugas PPSU</span>
-                     <h2 className="text-2xl font-black uppercase leading-tight">{selectedTask.title}</h2>
+                     <h2 className="text-2xl font-black uppercase leading-tight">{selectedTask.judulTugas}</h2>
                   </div>
                   <button onClick={() => setSelectedTask(null)} className="p-2 hover:bg-white/20 rounded-full transition-all">
                      <ChevronRight size={24} className="rotate-45" />
@@ -340,8 +340,8 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
                <div className="p-8 overflow-y-auto custom-scrollbar space-y-8">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                      <div>
-                        {selectedTask.photoUrl ? (
-                           <img src={selectedTask.photoUrl} className="w-full h-64 object-cover rounded-3xl border border-slate-100 shadow-sm" />
+                        {selectedTask.fotoSebelum ? (
+                           <img src={selectedTask.fotoSebelum} className="w-full h-64 object-cover rounded-3xl border border-slate-100 shadow-sm" />
                         ) : (
                            <div className="w-full h-64 bg-slate-100 rounded-3xl flex items-center justify-center text-slate-300">
                               <Camera size={48} />
@@ -375,14 +375,14 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
                         <section>
                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Deskripsi & Catatan</h4>
                            <p className="text-sm text-slate-600 leading-relaxed font-medium bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                              {selectedTask.description || 'Tidak ada catatan tambahan.'}
+                              {selectedTask.deskripsi || 'Tidak ada catatan tambahan.'}
                            </p>
                         </section>
 
                         <section className="grid grid-cols-2 gap-4">
                            <div>
                               <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Kategori</h4>
-                              <span className="bg-slate-100 text-slate-600 text-[10px] font-black px-3 py-1.5 rounded-lg uppercase tracking-wider">{selectedTask.category}</span>
+                              <span className="bg-slate-100 text-slate-600 text-[10px] font-black px-3 py-1.5 rounded-lg uppercase tracking-wider">{selectedTask.kategori}</span>
                            </div>
                            <div>
                               <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Prioritas</h4>
@@ -393,7 +393,7 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
                         <section>
                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Status Saat Ini</h4>
                            <div className={`p-4 rounded-2xl border flex items-center justify-between ${
-                              selectedTask.status === 'Verified' || selectedTask.status === 'Laporan Selesai' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-orange-50 border-orange-100 text-orange-700'
+                               selectedTask.status === 'Verified' || selectedTask.status === 'Laporan Selesai' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-orange-50 border-orange-100 text-orange-700'
                            }`}>
                               <span className="text-sm font-black uppercase tracking-widest">{selectedTask.status}</span>
                               <div className="w-2 h-2 rounded-full bg-current animate-pulse"></div>

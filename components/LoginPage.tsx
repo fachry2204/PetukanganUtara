@@ -24,7 +24,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, settings, users }) => {
     // Simulate Network Delay
     setTimeout(() => {
       // Logic Update: Search in the passed 'users' prop (which contains generated citizens)
-      const user = users.find(u => 
+      const user = users.find(u =>
         (u.username.toLowerCase() === identifier.toLowerCase()) ||
         (u.email && u.email.toLowerCase() === identifier.toLowerCase()) ||
         (u.nik && u.nik === identifier)
@@ -47,7 +47,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, settings, users }) => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-white relative overflow-hidden">
-      
+
       {/* Decorative Background Elements (Optional, kept subtle for white theme) */}
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-orange-50 rounded-full blur-3xl opacity-50 -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
       <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-blue-50 rounded-full blur-3xl opacity-50 translate-y-1/2 -translate-x-1/2 pointer-events-none"></div>
@@ -80,11 +80,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, settings, users }) => {
               <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
                 <User size={20} />
               </div>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
-                placeholder="Username, Email, atau NIK" 
+                placeholder="Username, Email, atau NIK"
                 className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all placeholder:text-slate-400 font-medium text-slate-700"
                 required
               />
@@ -97,15 +97,15 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, settings, users }) => {
               <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
                 <Lock size={20} />
               </div>
-              <input 
-                type={showPassword ? "text" : "password"} 
+              <input
+                type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Masukkan Password" 
+                placeholder="Masukkan Password"
                 className="w-full pl-12 pr-12 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all placeholder:text-slate-400 font-medium text-slate-700"
                 required
               />
-              <button 
+              <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
@@ -116,16 +116,13 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, settings, users }) => {
           </div>
 
           <div className="flex justify-between items-center text-xs">
-             <div className="text-slate-400 bg-slate-50 px-2 py-1 rounded">
-               *Warga login menggunakan <span className="font-bold text-slate-600">NIK</span>
-             </div>
-             <button type="button" className="font-bold text-orange-600 hover:text-orange-700 hover:underline">
-               Lupa Password?
-             </button>
+            <button type="button" className="font-bold text-orange-600 hover:text-orange-700 hover:underline">
+              Lupa Password?
+            </button>
           </div>
 
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             disabled={isLoading}
             className="w-full bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-orange-200 transition-all transform hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >

@@ -1,43 +1,43 @@
 
 import React, { useState } from 'react';
 import { X, CheckCircle2, MapPin, PlayCircle, RotateCcw, Camera, AlertCircle } from 'lucide-react';
-import { Report, ReportStatus, Staff, DutyStatus } from '../types';
+import { TugasPPSU, ReportStatus, Staff, DutyStatus } from '../types';
 
 interface ReportActionModalProps {
-  report: Report;
+  tugas: TugasPPSU;
   role: 'PPSU' | 'Admin';
   staffList: Staff[];
   onClose: () => void;
-  onUpdate: (updatedReport: Report, staffUpdates?: Staff[]) => void;
+  onUpdate: (updatedTugas: TugasPPSU, staffUpdates?: Staff[]) => void;
 }
 
-const ReportActionModal: React.FC<ReportActionModalProps> = ({ report, role, staffList, onClose, onUpdate }) => {
+const ReportActionModal: React.FC<ReportActionModalProps> = ({ tugas, role, staffList, onClose, onUpdate }) => {
   const [note, setNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleAction = async () => {
     setIsSubmitting(true);
     
-    let nextStatus: ReportStatus = report.status;
+    let nextStatus: ReportStatus = tugas.status;
     let staffUpdates: Staff[] = [];
 
-    if (report.status === ReportStatus.PENDING_ACCEPTANCE) {
+    if (tugas.status === ReportStatus.PENDING_ACCEPTANCE) {
       nextStatus = ReportStatus.ON_THE_WAY;
-    } else if (report.status === ReportStatus.ON_THE_WAY) {
+    } else if (tugas.status === ReportStatus.ON_THE_WAY) {
       nextStatus = ReportStatus.ARRIVED;
-    } else if (report.status === ReportStatus.ARRIVED) {
+    } else if (tugas.status === ReportStatus.ARRIVED) {
       nextStatus = ReportStatus.IN_PROGRESS;
-    } else if (report.status === ReportStatus.IN_PROGRESS) {
+    } else if (tugas.status === ReportStatus.IN_PROGRESS) {
       nextStatus = ReportStatus.VERIFICATION;
-    } else if (report.status === ReportStatus.REVISION) {
+    } else if (tugas.status === ReportStatus.REVISION) {
       nextStatus = ReportStatus.VERIFICATION;
     }
 
-    const updatedReport: Report = {
-      ...report,
+    const updatedTugas: TugasPPSU = {
+      ...tugas,
       status: nextStatus,
       logs: [
-        ...report.logs,
+        ...tugas.logs,
         {
           status: nextStatus,
           timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
@@ -47,18 +47,15 @@ const ReportActionModal: React.FC<ReportActionModalProps> = ({ report, role, sta
       ]
     };
 
-    // Simulate staff status update if needed
-    // In a real app, this would be handled by the backend
-
     setTimeout(() => {
-      onUpdate(updatedReport, staffUpdates);
+      onUpdate(updatedTugas, staffUpdates);
       setIsSubmitting(false);
       onClose();
     }, 1000);
   };
 
   const getActionTitle = () => {
-    switch (report.status) {
+    switch (tugas.status) {
       case ReportStatus.PENDING_ACCEPTANCE: return 'Terima Pekerjaan';
       case ReportStatus.ON_THE_WAY: return 'Konfirmasi Sampai Lokasi';
       case ReportStatus.ARRIVED: return 'Mulai Pengerjaan';
@@ -69,7 +66,7 @@ const ReportActionModal: React.FC<ReportActionModalProps> = ({ report, role, sta
   };
 
   const getActionButtonText = () => {
-    switch (report.status) {
+    switch (tugas.status) {
       case ReportStatus.PENDING_ACCEPTANCE: return 'Terima & Berangkat';
       case ReportStatus.ON_THE_WAY: return 'Saya Sudah Sampai';
       case ReportStatus.ARRIVED: return 'Mulai Sekarang';
@@ -81,7 +78,7 @@ const ReportActionModal: React.FC<ReportActionModalProps> = ({ report, role, sta
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+      <div className="bg-white w-full max-md rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
         <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50">
           <h3 className="font-bold text-slate-800">{getActionTitle()}</h3>
           <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 rounded-full transition-colors">
@@ -92,8 +89,8 @@ const ReportActionModal: React.FC<ReportActionModalProps> = ({ report, role, sta
         <div className="p-6 space-y-4">
           <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
             <p className="text-xs font-bold text-blue-700 uppercase mb-1">Tugas Saat Ini:</p>
-            <p className="text-sm font-bold text-slate-800">{report.title}</p>
-            <p className="text-[10px] text-slate-500 mt-1">{report.ticketNumber}</p>
+            <p className="text-sm font-bold text-slate-800">{tugas.judulTugas}</p>
+            <p className="text-[10px] text-slate-500 mt-1">{tugas.id}</p>
           </div>
 
           <div className="space-y-2">
@@ -106,7 +103,7 @@ const ReportActionModal: React.FC<ReportActionModalProps> = ({ report, role, sta
             />
           </div>
 
-          {(report.status === ReportStatus.ARRIVED || report.status === ReportStatus.IN_PROGRESS) && (
+          {(tugas.status === ReportStatus.ARRIVED || tugas.status === ReportStatus.IN_PROGRESS) && (
             <div className="p-4 bg-orange-50 rounded-xl border border-orange-100 flex items-start gap-3">
               <Camera className="text-orange-500 shrink-0" size={20} />
               <div>

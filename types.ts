@@ -77,38 +77,31 @@ export enum ReportStatus {
   REJECTED = 'Ditolak'
 }
 
-export interface ReportLog {
+export interface TugasPPSULog {
   status: ReportStatus;
   timestamp: string;
   note?: string;
   actor?: string;
 }
 
-export interface Report {
+export interface TugasPPSU {
   id: string;
-  ticketNumber: string;
-  title: string;
-  description: string;
-  category: string; 
-  reporterName: string;
-  reporterNik?: string;
-  reporterPhone?: string;
-  location: string;
+  judulTugas: string;
+  deskripsi: string;
+  kategori: string;
+  lokasi: string;
   latitude: number;
   longitude: number;
   status: ReportStatus;
   timestamp: string;
-  photoUrl: string;
-  photoArrival?: string;
-  gpsArrival?: { lat: number, lng: number };
-  photoCompletion?: string;
-  photoRevision?: string;
+  fotoSebelum?: string;
+  fotoSesudah?: string;
+  staffId?: string;
   priority: 'High' | 'Medium' | 'Low';
-  logs: ReportLog[];
-  assignedStaffIds?: string[];
-  rejectionReason?: string;
-  estimationTime?: string;
-  verifiedBy?: string;
+  logs: TugasPPSULog[];
+  alasanPenolakan?: string;
+  reporterName: string;
+  reporterNik?: string;
 }
 
 export interface Staff {

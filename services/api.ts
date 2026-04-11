@@ -1,4 +1,4 @@
-import { Report, Citizen, Staff, ServiceRequest, User } from '../types';
+import { TugasPPSU, Citizen, Staff, ServiceRequest, User } from '../types';
 
 // Konfigurasi URL Backend
 // Gunakan environment variable VITE_API_URL jika ada (saat di hosting), jika tidak gunakan localhost
@@ -47,10 +47,10 @@ const putData = async (endpoint: string, data: any) => {
 };
 
 export const apiService = {
-    // --- REPORTS ---
-    getReports: (): Promise<Report[]> => fetchData('/reports'),
-    createReport: (report: Report) => postData('/reports', report),
-    updateReport: (report: Report) => putData(`/reports/${report.id}`, report),
+    // --- TUGAS PPSU (Replacement for Reports) ---
+    getTugasPPSU: (): Promise<TugasPPSU[]> => fetchData('/reports'),
+    createTugasPPSU: (tugas: TugasPPSU) => postData('/reports', tugas),
+    updateTugasPPSU: (tugas: TugasPPSU) => putData(`/reports/${tugas.id}`, tugas),
 
     // --- STAFF ---
     getStaff: (): Promise<Staff[]> => fetchData('/staff'),

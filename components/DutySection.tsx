@@ -9,19 +9,19 @@ import {
   User as UserIcon,
   ListTodo
 } from 'lucide-react';
-import { DutyStatus, Staff, User, Report } from '../types';
+import { DutyStatus, Staff, User, TugasPPSU } from '../types';
 import ProfileModal from './ProfileModal';
 import StaffTaskListModal from './StaffTaskListModal';
 
 interface DutySectionProps {
   user: User;
-  reports: Report[];
-  setReports: React.Dispatch<React.SetStateAction<Report[]>>;
+  tugasList: TugasPPSU[];
+  setTugasList: React.Dispatch<React.SetStateAction<TugasPPSU[]>>;
   staffList: Staff[];
   setStaffList: React.Dispatch<React.SetStateAction<Staff[]>>;
 }
 
-const DutySection: React.FC<DutySectionProps> = ({ user, reports, setReports, staffList, setStaffList }) => {
+const DutySection: React.FC<DutySectionProps> = ({ user, tugasList, setTugasList, staffList, setStaffList }) => {
   // CHANGED: Default filter set to ONLINE instead of ALL
   const [filterStatus, setFilterStatus] = useState<string>(DutyStatus.ONLINE);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -55,8 +55,8 @@ const DutySection: React.FC<DutySectionProps> = ({ user, reports, setReports, st
     return `bg-white p-4 rounded-xl shadow-sm border border-slate-100 border-b-4 ${borderColor} cursor-pointer transition-all duration-200 ${isActive ? `ring-2 ring-offset-2 ${baseColor.replace('bg-', 'ring-')} transform scale-105` : 'hover:scale-105 hover:shadow-md'}`;
   };
 
-  const handleUpdateReport = (updatedReport: Report, staffUpdates?: Staff[]) => {
-    setReports(prev => prev.map(r => r.id === updatedReport.id ? updatedReport : r));
+  const handleUpdateTugas = (updatedTugas: TugasPPSU, staffUpdates?: Staff[]) => {
+    setTugasList(prev => prev.map(t => t.id === updatedTugas.id ? updatedTugas : t));
     
     // Update Staff Status if report completion triggers status change
     if (staffUpdates && staffUpdates.length > 0) {
@@ -246,9 +246,9 @@ const DutySection: React.FC<DutySectionProps> = ({ user, reports, setReports, st
       {viewingTasksFor && (
         <StaffTaskListModal
           staff={viewingTasksFor}
-          reports={reports}
+          tugasList={tugasList}
           onClose={() => setViewingTasksFor(null)}
-          onUpdateReport={handleUpdateReport}
+          onUpdateTugas={handleUpdateTugas}
         />
       )}
     </div>

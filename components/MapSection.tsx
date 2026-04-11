@@ -1,18 +1,19 @@
+
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import L from 'leaflet';
 import { MapPin, Navigation, MessageCircle, ChevronDown, ChevronUp, Layers, ListTodo } from 'lucide-react';
-import { DutyStatus, Staff, Report } from '../types';
+import { DutyStatus, Staff, TugasPPSU } from '../types';
 import StaffTaskListModal from './StaffTaskListModal';
 
 interface MapSectionProps {
-  reports: Report[];
-  setReports: React.Dispatch<React.SetStateAction<Report[]>>;
+  tugasList: TugasPPSU[];
+  setTugasList: React.Dispatch<React.SetStateAction<TugasPPSU[]>>;
   staffList: Staff[];
   setStaffList: React.Dispatch<React.SetStateAction<Staff[]>>;
   sosAlerts: any[];
 }
 
-const MapSection: React.FC<MapSectionProps> = ({ reports, setReports, staffList, setStaffList, sosAlerts }) => {
+const MapSection: React.FC<MapSectionProps> = ({ tugasList, setTugasList, staffList, setStaffList, sosAlerts }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
@@ -67,9 +68,9 @@ const MapSection: React.FC<MapSectionProps> = ({ reports, setReports, staffList,
     setSelectedStaff(null);
   };
 
-  // Handler for updating reports from the modal
-  const handleUpdateReport = (updatedReport: Report, staffUpdates?: Staff[]) => {
-    setReports(prev => prev.map(r => r.id === updatedReport.id ? updatedReport : r));
+  // Handler for updating tugas from the modal
+  const handleUpdateTugas = (updatedTugas: TugasPPSU, staffUpdates?: Staff[]) => {
+    setTugasList(prev => prev.map(t => t.id === updatedTugas.id ? updatedTugas : t));
     
     if (staffUpdates && staffUpdates.length > 0) {
         setStaffList(prevStaff => {
@@ -210,7 +211,7 @@ const MapSection: React.FC<MapSectionProps> = ({ reports, setReports, staffList,
                     >
                        <div className="flex items-center gap-3">
                           <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                          <span className="text-xs font-black text-slate-700">Online</span>
+                           <span className="text-xs font-black text-slate-700">Online</span>
                        </div>
                        <span className="bg-white px-2 py-0.5 rounded-lg text-[10px] font-black text-emerald-600 shadow-sm border border-emerald-50">{stats.online}</span>
                     </button>
@@ -372,9 +373,9 @@ const MapSection: React.FC<MapSectionProps> = ({ reports, setReports, staffList,
       {viewingTasksFor && (
         <StaffTaskListModal
           staff={viewingTasksFor}
-          reports={reports}
+          tugasList={tugasList}
           onClose={() => setViewingTasksFor(null)}
-          onUpdateReport={handleUpdateReport}
+          onUpdateTugas={handleUpdateTugas}
         />
       )}
     </div>

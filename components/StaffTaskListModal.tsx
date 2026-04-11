@@ -1,29 +1,29 @@
 
 import React, { useState } from 'react';
 import { X, Calendar, MapPin, CheckCircle2, ArrowRight, Clock, AlertCircle, Activity, PlayCircle, RotateCcw } from 'lucide-react';
-import { Staff, Report, ReportStatus, DutyStatus } from '../types';
+import { Staff, TugasPPSU, ReportStatus, DutyStatus } from '../types';
 import ReportActionModal from './ReportActionModal';
 
 interface StaffTaskListModalProps {
   staff: Staff;
-  reports: Report[];
+  tugasList: TugasPPSU[];
   onClose: () => void;
-  onUpdateReport: (updatedReport: Report, staffUpdates?: Staff[]) => void;
+  onUpdateTugas: (updatedTugas: TugasPPSU, staffUpdates?: Staff[]) => void;
 }
 
-const StaffTaskListModal: React.FC<StaffTaskListModalProps> = ({ staff, reports, onClose, onUpdateReport }) => {
-  const [actionReport, setActionReport] = useState<Report | null>(null);
+const StaffTaskListModal: React.FC<StaffTaskListModalProps> = ({ staff, tugasList, onClose, onUpdateTugas }) => {
+  const [actionTugas, setActionTugas] = useState<TugasPPSU | null>(null);
 
-  // Filter reports assigned to this staff
-  const assignedTasks = reports.filter(r => 
-    r.assignedStaffIds?.includes(staff.id) && 
+  // Filter tugas assigned to this staff
+  const assignedTasks = tugasList.filter(t => 
+    t.staffId === staff.id && 
     (
-        r.status === ReportStatus.PENDING_ACCEPTANCE || 
-        r.status === ReportStatus.ON_THE_WAY || 
-        r.status === ReportStatus.ARRIVED || 
-        r.status === ReportStatus.IN_PROGRESS || 
-        r.status === ReportStatus.VERIFICATION ||
-        r.status === ReportStatus.REVISION
+        t.status === ReportStatus.PENDING_ACCEPTANCE || 
+        t.status === ReportStatus.ON_THE_WAY || 
+        t.status === ReportStatus.ARRIVED || 
+        t.status === ReportStatus.IN_PROGRESS || 
+        t.status === ReportStatus.VERIFICATION ||
+        t.status === ReportStatus.REVISION
     )
   );
 
@@ -34,12 +34,12 @@ const StaffTaskListModal: React.FC<StaffTaskListModalProps> = ({ staff, reports,
     return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
   });
 
-  const handleActionClick = (report: Report) => {
-    setActionReport(report);
+  const handleActionClick = (tugas: TugasPPSU) => {
+    setActionTugas(tugas);
   };
 
-  const handleUpdateFromAction = (updatedReport: Report, staffUpdates?: Staff[]) => {
-    onUpdateReport(updatedReport, staffUpdates);
+  const handleUpdateFromAction = (updatedTugas: TugasPPSU, staffUpdates?: Staff[]) => {
+    onUpdateTugas(updatedTugas, staffUpdates);
   };
 
   return (
@@ -74,16 +74,16 @@ const StaffTaskListModal: React.FC<StaffTaskListModalProps> = ({ staff, reports,
                           {task.priority} Priority
                        </span>
                        <span className="text-xs text-slate-400 flex items-center gap-1">
-                          <Calendar size={12} /> {task.timestamp}
+                          <Calendar size={12} /> {new Date(task.timestamp).toLocaleDateString('id-ID')}
                        </span>
                     </div>
                     
-                    <h4 className="font-bold text-slate-800 mb-1">{task.title}</h4>
-                    <p className="text-xs text-slate-600 mb-3 bg-slate-50 p-2 rounded line-clamp-2">{task.description}</p>
+                    <h4 className="font-bold text-slate-800 mb-1">{task.judulTugas}</h4>
+                    <p className="text-xs text-slate-600 mb-3 bg-slate-50 p-2 rounded line-clamp-2">{task.deskripsi}</p>
                     
                     <div className="flex items-center gap-2 text-xs text-slate-500 mb-4">
                        <MapPin size={14} className="text-red-500" />
-                       <span className="truncate">{task.location}</span>
+                       <span className="truncate">{task.lokasi}</span>
                     </div>
 
                     <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
@@ -169,12 +169,12 @@ const StaffTaskListModal: React.FC<StaffTaskListModalProps> = ({ staff, reports,
         </div>
       </div>
 
-      {actionReport && (
+      {actionTugas && (
         <ReportActionModal 
-            report={actionReport}
+            tugas={actionTugas}
             role="PPSU"
             staffList={[]} // Not needed for PPSU actions
-            onClose={() => setActionReport(null)}
+            onClose={() => setActionTugas(null)}
             onUpdate={handleUpdateFromAction}
         />
       )}

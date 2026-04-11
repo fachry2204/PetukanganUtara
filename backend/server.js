@@ -13,7 +13,7 @@ app.use(bodyParser.json({ limit: '50mb' })); // Limit besar untuk upload base64 
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
 // --- DAFTAR ROUTER MODULAR --- //
-const reportsRoutes = require('./routes/reports');
+const tugasPPSURoutes = require('./routes/tugas_ppsu');
 const staffRoutes = require('./routes/staff');
 const usersRoutes = require('./routes/users');
 const attendanceRoutes = require('./routes/attendance');
@@ -26,7 +26,7 @@ app.get('/api/time', (req, res) => {
 });
 
 // Daftarkan Routes
-app.use('/api/reports', reportsRoutes);
+app.use('/api/reports', tugasPPSURoutes); // Keep endpoint /api/reports for frontend compatibility or change to /api/tugas? Let's keep /api/reports for now to minimize frontend changes, or change it if I'm updating frontend anyway. The user said "Table Report tidak dibutuhkan", so maybe /api/tugas is better. 
 app.use('/api/staff', staffRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/attendance', attendanceRoutes);
