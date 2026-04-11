@@ -26,7 +26,7 @@ app.get('/api/time', (req, res) => {
 });
 
 // Daftarkan Routes
-app.use('/api/reports', tugasPPSURoutes); // Keep endpoint /api/reports for frontend compatibility or change to /api/tugas? Let's keep /api/reports for now to minimize frontend changes, or change it if I'm updating frontend anyway. The user said "Table Report tidak dibutuhkan", so maybe /api/tugas is better. 
+app.use('/api/reports', tugasPPSURoutes); // Keep endpoint /api/reports for frontend compatibility
 app.use('/api/staff', staffRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/attendance', attendanceRoutes);

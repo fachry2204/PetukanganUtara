@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { User, TugasPPSU } from '../types';
-import { Calendar, ClipboardList, CheckCircle2, MapPin, Clock, FileText, ChevronRight, X, AlertTriangle, Camera } from 'lucide-react';
+import { Calendar, ClipboardList, CheckCircle2, MapPin, Clock, FileText, ChevronRight, X, AlertTriangle, Camera, MapPinned } from 'lucide-react';
 import LocationMiniMap from './LocationMiniMap';
 
 interface PPSUMyReportsSectionProps {
@@ -95,8 +95,7 @@ const PPSUMyReportsSection: React.FC<PPSUMyReportsSectionProps> = ({ user, tugas
     const userReports = tugasList.filter(t => t.reporterNik === user.nik || t.staffId === user.id)
                                 .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     
-    // In our new schema, each TugasPPSU is a single task. 
-    // If the user wants to keep the grouping logic by title:
+    // Grouping logic by title if multiple entries exist (migration pattern)
     const groups: Record<string, TugasPPSU[]> = {};
     userReports.forEach(t => {
         const title = t.judulTugas;
@@ -341,7 +340,6 @@ const PPSUMyReportsSection: React.FC<PPSUMyReportsSectionProps> = ({ user, tugas
                     <h4 className="font-bold text-slate-800 text-base mb-4 flex items-center gap-2">
                          <Camera size={18} className="text-orange-500" /> Bukti Foto Pelaksanaan
                     </h4>
-                    {/* In our new system, we have fotoSebelum and fotoSesudah properties */}
                     <div className="grid grid-cols-1 gap-4">
                         {selectedTaskGroup.latestTask.fotoSebelum && (
                            <div className="bg-white border rounded-2xl overflow-hidden p-4 shadow-sm border-slate-200">
@@ -408,7 +406,7 @@ const PPSUMyReportsSection: React.FC<PPSUMyReportsSectionProps> = ({ user, tugas
 
        {/* Fullscreen Image Preview */}
        {fullscreenImage && (
-         <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[200] flex justify-center items-center p-4 animate-in fade-in duration-200" onClick={() => setFullscreenImage(null)}>
+         <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-[200] flex justify-center items-center p-4 animate-in fade-in duration-200" onClick={() => setFullscreenImage(null)}>
             <div className="relative w-full max-w-3xl max-h-[85vh] rounded-[2rem] shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
                <img src={fullscreenImage} alt="Preview Foto" className="w-full h-full object-contain bg-black/50" />
                <button onClick={() => setFullscreenImage(null)} className="absolute top-4 right-4 p-2 bg-black/50 text-white hover:bg-black/70 rounded-full transition-colors backdrop-blur-md border border-white/20 shadow-lg">

@@ -1,4 +1,3 @@
-
 export type Role = 
   | 'Administrator' 
   | 'Admin' 
@@ -10,43 +9,9 @@ export type Role =
   | 'PKK' 
   | 'Karang Taruna';
 
-export type ServiceRatingValue = 'Buruk' | 'Biasa' | 'Baik' | 'Sangat Baik';
-
-export interface ServiceRating {
-  id: string;
-  ticketNumber: string;
-  rating: ServiceRatingValue;
-  timestamp: string;
-  serviceType: string;
-}
-
 export enum Gender {
   MALE = 'Laki-Laki',
   FEMALE = 'Perempuan'
-}
-
-export enum BloodType {
-  A = 'A',
-  B = 'B',
-  AB = 'AB',
-  O = 'O',
-  UNKNOWN = '-'
-}
-
-export enum CitizenshipStatus {
-  WNI = 'WNI',
-  WNA = 'WNA'
-}
-
-export enum ResidenceStatus {
-  KTP_DKI = 'KTP DKI',
-  PENDATANG = 'Pendatang',
-  WNA = 'WNA'
-}
-
-export enum VitalStatus {
-  ALIVE = 'Hidup',
-  DECEASED = 'Meninggal'
 }
 
 export enum DutyStatus {
@@ -56,12 +21,6 @@ export enum DutyStatus {
   OFFLINE = 'Offline',
   ISTIRAHAT = 'Istirahat',
   BAHAYA = 'Dalam Bahaya'
-}
-
-export enum TaskStatus {
-  PROGRESS = 'Sedang Berjalan',
-  COMPLETED = 'Selesai',
-  PENDING = 'Tertunda'
 }
 
 export enum ReportStatus {
@@ -99,7 +58,10 @@ export interface TugasPPSU {
   staffId?: string;
   priority: 'High' | 'Medium' | 'Low';
   logs: TugasPPSULog[];
+  assignedStaffIds?: string[];
   alasanPenolakan?: string;
+  estimationTime?: string;
+  verifiedBy?: string;
   reporterName: string;
   reporterNik?: string;
 }
@@ -122,51 +84,6 @@ export interface Staff {
   totalTugasBerhasil: number;
 }
 
-export interface Citizen {
-  id: string;
-  nik: string;
-  kk: string;
-  namaLengkap: string;
-  jenisKelamin: Gender;
-  tempatLahir: string;
-  tanggalLahir: string;
-  agama: string;
-  statusPerkawinan: string;
-  golonganDarah?: BloodType;
-  pekerjaan: string;
-  nomorWhatsapp: string;
-  fotoWajah?: string; 
-  alamat: string;
-  rt: string;
-  rw: string;
-  kelurahan: string;
-  kecamatan: string;
-  kota: string;
-  provinsi: string;
-  latitude?: number;
-  longitude?: number;
-  statusKtp: ResidenceStatus;
-  asalProvinsi?: string; 
-  asalKota?: string; 
-  asalKelurahan?: string; 
-  asalKecamatan?: string; 
-  alamatAsli?: string; 
-  kewarganegaraan: CitizenshipStatus;
-  negaraAsal?: string; 
-  nomorPaspor?: string; 
-  fotoDokumen?: string; 
-  statusKematian: VitalStatus;
-  sudahPunyaKtp?: boolean; 
-}
-
-export interface Task {
-  id: string;
-  category: string;
-  status: TaskStatus;
-  date: string;
-  staffId: string;
-}
-
 export interface User {
   id: string;
   username: string; 
@@ -187,51 +104,6 @@ export interface SystemSettings {
   logo: string | null;
   loginBackground?: string | null;
   anjunganBackground?: string | null;
-}
-
-export enum ServiceType {
-  NTCR = 'Surat Pengantar Nikah (NTCR)',
-  SKTM = 'Surat Keterangan Tidak Mampu (SKTM)',
-  PENGHASILAN = 'Surat Keterangan Penghasilan',
-  SKU = 'Surat Keterangan Usaha (SKU)',
-  LEGALISASI = 'Legalisasi Dokumen',
-  UMUM = 'Surat Keterangan Umum'
-}
-
-export enum ServiceStatus {
-  NEW = 'Pengajuan Baru',
-  ACCEPTED = 'Pengajuan Diterima',
-  WAITING = 'Dalam Antrian',
-  PROCESSED = 'Menunggu Surat Terbit',
-  READY = 'Siap Diambil',
-  COMPLETED = 'Selesai',
-  REJECTED = 'Ditolak'
-}
-
-export interface ServiceLog {
-  status: ServiceStatus;
-  timestamp: string;
-  actor: string;
-  note?: string;
-}
-
-export interface ServiceRequest {
-  id: string;
-  ticketNumber: string;
-  letterNumber?: string; 
-  rtLetterNumber?: string; 
-  requestDate: string; 
-  completionDate?: string; 
-  type: ServiceType;
-  applicantNik: string;
-  applicantName: string;
-  applicantPhone: string;
-  status: ServiceStatus;
-  notes?: string; 
-  documents?: string[]; 
-  signedLetterUrl?: string; 
-  verificationCode?: string; 
-  logs: ServiceLog[];
 }
 
 export interface Announcement {

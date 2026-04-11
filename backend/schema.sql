@@ -27,11 +27,19 @@ CREATE TABLE IF NOT EXISTS tugas_ppsu (
   foto_sebelum TEXT,
   foto_sesudah TEXT,
   staff_id VARCHAR(50),
+  assigned_staff_ids JSON,
   priority VARCHAR(50),
   logs JSON,
   alasan_penolakan TEXT,
   reporter_name VARCHAR(255),
-  reporter_nik VARCHAR(50)
+  reporter_nik VARCHAR(50),
+  reporter_phone VARCHAR(50),
+  ticket_number VARCHAR(100),
+  photo_arrival TEXT,
+  photo_completion TEXT,
+  photo_revision TEXT,
+  estimation_time VARCHAR(100),
+  gps_arrival JSON
 );
 
 CREATE TABLE IF NOT EXISTS users (

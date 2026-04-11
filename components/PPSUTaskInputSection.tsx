@@ -211,30 +211,25 @@ const PPSUTaskInputSection: React.FC<PPSUTaskInputSectionProps> = ({ user, tugas
 
         // SAVE TUGAS TO STATE/DB LOOP
         const timestampStr = timeToPrint.toISOString();
-        
-        // If it's a new task (Sebelum Tugas), we create a new entry.
-        // If it's Sedang Tugas or Selesai Tugas, we might want to update the existing one.
-        // But for PPSUTaskInputSection, it seems to be designed to create a new report for each stage?
-        // Actually, looking at grouping logic in PPSUMyReportsSection, it groups by title.
-        // For simplicity and to match the backend 'tugas_ppsu' table:
         const newTugas: Partial<TugasPPSU> = {
+            id: `TUGAS-${Date.now()}`,
             judulTugas: taskTitle,
             deskripsi: taskDesc,
             kategori: 'Infrastruktur',
             lokasi: address,
             latitude: location.lat,
             longitude: location.lng,
-            staffId: user.id, // Assuming user.id is the database ID
+            staffId: user.id || user.nik, 
             reporterName: user.name || user.username,
             reporterNik: user.nik || '',
-            status: 'Laporan Baru',
+            status: 'Menunggu Verifikasi',
             timestamp: timestampStr,
             priority: 'Medium',
             logs: [{
                 status: 'Laporan Baru',
                 actor: user.name || user.username,
                 timestamp: timestampStr,
-                note: `Validasi GPS and Waktu Berhasil - ${taskStatus}`
+                note: `Validasi GPS dan Waktu Berhasil - ${taskStatus}`
             }]
         };
 

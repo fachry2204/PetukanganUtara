@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Announcement, User, Role } from '../types';
-import { Send, Megaphone, Trash2, Users } from 'lucide-react';
+import { Send, Megaphone, Trash2, Users } from 'lucide-center';
 import { apiService } from '../services/api';
 
 interface AnnouncementSectionProps {
@@ -17,7 +17,7 @@ const AnnouncementSection: React.FC<AnnouncementSectionProps> = ({ user, users, 
   const [targetRole, setTargetRole] = useState<Role | ''>('');
   const [targetUserId, setTargetUserId] = useState<string>('');
 
-  const availableRoles: Role[] = ['Pimpinan', 'Staff Kelurahan', 'PPSU'];
+  const availableRoles: Role[] = ['Administrator', 'Admin', 'Pimpinan', 'Staff Kelurahan', 'Operator', 'PPSU'];
 
   const handlePost = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,7 +72,6 @@ const AnnouncementSection: React.FC<AnnouncementSectionProps> = ({ user, users, 
               required
             />
           </div>
-
           <div>
             <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Isi Pengumuman</label>
             <textarea
