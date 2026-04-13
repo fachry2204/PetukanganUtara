@@ -19,7 +19,10 @@ import {
   ChevronRight,
   Camera,
   CheckCircle2,
-  AlertTriangle
+  AlertTriangle,
+  History as HistoryIcon,
+  Clock,
+  Image as ImageIcon
 } from 'lucide-react';
 import { Staff, Gender, User, Announcement } from '../types';
 import ProfileModal from './ProfileModal';
@@ -33,9 +36,10 @@ interface PPSUSectionProps {
   setStaffList: React.Dispatch<React.SetStateAction<Staff[]>>;
   attendanceRecords?: any[];
   announcements?: Announcement[];
+  schedules?: any[];
 }
 
-const PPSUSection: React.FC<PPSUSectionProps> = ({ user, staffList, setStaffList, attendanceRecords = [], announcements = [] }) => {
+const PPSUSection: React.FC<PPSUSectionProps> = ({ user, staffList, setStaffList, attendanceRecords = [], announcements = [], schedules = [] }) => {
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
@@ -142,33 +146,110 @@ const PPSUSection: React.FC<PPSUSectionProps> = ({ user, staffList, setStaffList
     
     // Use LIVE data from attendanceRecords instead of just localStorage
     const hasCheckedIn = attendanceRecords.some(r => 
-      r.userNik === user.nik && 
+      (r.userNik === user.nik || r.userId === user.id) && 
       r.type === 'Absen Masuk' && 
       r.timestamp.startsWith(todayDateStr)
     );
     
     const hasCheckedOut = attendanceRecords.some(r => 
-      r.userNik === user.nik && 
+      (r.userNik === user.nik || r.userId === user.id) && 
       r.type === 'Absen Pulang' && 
       r.timestamp.startsWith(todayDateStr)
     );
+    const myStaffMember = staffList.find(s => s.nik === user.nik || s.nomorAnggota === user.username);
+    const resolvedNik = myStaffMember ? myStaffMember.nik : user.nik;
 
     return (
       <div className="space-y-6 max-w-3xl mx-auto pb-6">
          {/* HEADER / WELCOME */}
-         <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-[2rem] p-8 text-white flex flex-col sm:flex-row items-center gap-6 shadow-xl shadow-orange-200">
-            <div className="relative">
-               <img src={user.avatar || 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=800'} alt={user.name} className="w-24 h-24 rounded-full border-4 border-white shadow-md object-cover" />
-               <div className="absolute bottom-0 right-0 w-6 h-6 bg-emerald-500 border-2 border-white rounded-full"></div>
+         <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-3xl p-5 text-white flex items-center gap-5 shadow-lg shadow-orange-200/50 relative overflow-hidden ring-1 ring-white/20">
+            <div className="relative z-10">
+               <img src={user.avatar || 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=800'} alt={user.name} className="w-16 h-16 rounded-2xl border-2 border-white/50 shadow-md object-cover" />
+               <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 border-2 border-white rounded-full"></div>
             </div>
-            <div className="text-center sm:text-left flex-1">
-               <h2 className="text-3xl font-black mb-1">Halo, {user.name}</h2>
-               <p className="text-orange-100 font-medium text-sm mb-4">Pasukan Orange Kelurahan Petukangan Utara</p>
-               <div className="inline-flex items-center gap-2 bg-white/20 px-3 py-1.5 rounded-xl backdrop-blur-sm">
-                  <FileText size={16} className="text-white" />
-                  <span className="font-mono text-sm tracking-widest font-bold">ID: {user.username.toUpperCase()}</span>
+            <div className="text-left flex-1 z-10">
+               <h2 className="text-xl font-black mb-0.5 leading-tight">Halo, {user.name}</h2>
+               <p className="text-orange-100 font-bold text-[10px] uppercase tracking-widest mb-2 opacity-90">Pasukan Orange</p>
+               <div className="inline-flex items-center gap-2 bg-black/10 px-2.5 py-1 rounded-lg border border-white/10 backdrop-blur-md">
+                  <FileText size={12} className="text-white/80" />
+                  <span className="font-mono text-[10px] tracking-widest font-bold uppercase transition-all">{user.username}</span>
                </div>
             </div>
+            <Users size={200} className="absolute -right-12 -bottom-12 text-white/10" />
+         </div>
+
+         {/* JADWAL SAYA BULAN INI (TOTAL) */}
+         <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col gap-4">
+            <h3 className="font-bold text-slate-800 flex items-center gap-2">
+               <HistoryIcon size={18} className="text-indigo-500" /> Jadwal Penugasan Bulan Ini
+            </h3>
+            {(() => {
+                const currentMonth = new Date().getMonth();
+                const currentYear = new Date().getFullYear();
+                
+                const monthlySchedules = schedules
+                  .filter(s => {
+                    if (!s.date) return false;
+                    const sNik = String(s.nik || '');
+                    const sStaffId = String(s.staff_id || '');
+                    const sMemberId = String(s.nomor_anggota || '');
+                    
+                    const isMyNik = sNik && (sNik === String(user.nik || '') || (myStaffMember && sNik === String(myStaffMember.nik)));
+                    const isMyStaffId = sStaffId && (sStaffId === String(user.id || '') || (myStaffMember && sStaffId === String(myStaffMember.id)));
+                    const isMyMemberId = sMemberId && (sMemberId === String(user.username || '') || (myStaffMember && sMemberId === String(myStaffMember.nomorAnggota)));
+                    
+                    const isMySchedule = isMyNik || isMyStaffId || isMyMemberId;
+
+                    const sDate = new Date(s.date);
+                    const sDateStr = sDate.toISOString().split('T')[0];
+                    return isMySchedule && 
+                           sDate.getMonth() === currentMonth && 
+                           sDate.getFullYear() === currentYear;
+                  })
+                  .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+                if (monthlySchedules.length === 0) {
+                   return (
+                      <p className="text-center py-6 text-slate-400 font-bold italic text-sm">Belum ada penugasan terdaftar untuk bulan ini.</p>
+                   );
+                }
+
+                return (
+                   <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs border-separate border-spacing-y-2">
+                         <thead>
+                            <tr className="text-slate-400 uppercase text-[9px] font-black tracking-widest font-bold">
+                               <th className="px-4">Tanggal</th>
+                               <th className="px-4">Shift</th>
+                               <th className="px-4">Waktu</th>
+                               <th className="px-4">Zona</th>
+                            </tr>
+                         </thead>
+                         <tbody>
+                            {monthlySchedules.map((s, idx) => {
+                               const isToday = new Date(s.date).toISOString().split('T')[0] === new Date().toISOString().split('T')[0];
+                               return (
+                                  <tr key={idx} className={`${isToday ? 'bg-indigo-50/50 border border-indigo-200 shadow-sm font-bold' : 'bg-slate-50'} rounded-xl transition-all`}>
+                                     <td className="py-3 px-4 rounded-l-xl font-bold text-slate-700">
+                                        {new Date(s.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })}
+                                     </td>
+                                     <td className="py-3 px-4">
+                                        <span className="bg-white px-2 py-0.5 rounded-lg text-indigo-600 border border-indigo-100 font-black uppercase text-[9px]">{s.shift}</span>
+                                     </td>
+                                     <td className="py-3 px-4 font-medium text-slate-500">
+                                        {s.start_time.slice(0, 5)} - {s.end_time.slice(0, 5)}
+                                     </td>
+                                     <td className="py-3 px-4 rounded-r-xl font-black text-slate-800 uppercase text-[9px] truncate max-w-[80px]">
+                                        {s.area}
+                                     </td>
+                                  </tr>
+                               );
+                            })}
+                         </tbody>
+                      </table>
+                   </div>
+                );
+            })()}
          </div>
 
          {/* STATUS ABSENSI HARI INI */}
@@ -194,23 +275,54 @@ const PPSUSection: React.FC<PPSUSectionProps> = ({ user, staffList, setStaffList
                <MessageCircle size={18} className="text-blue-500" /> Pengumuman Pimpinan
             </h3>
             <div className="space-y-4">
-               {announcements.length === 0 ? (
-                  <p className="text-center py-6 text-slate-400 font-bold italic text-sm">Belum ada pengumuman.</p>
-               ) : (
-                  announcements.slice(0, 3).map((ann, idx) => (
-                     <div key={ann.id} className={`p-4 rounded-2xl relative overflow-hidden ${idx === 0 ? 'bg-blue-50 border border-blue-100' : 'bg-slate-50 border border-slate-100'}`}>
-                        {idx !== 0 && <div className="absolute top-0 left-0 w-1 h-full bg-orange-500"></div>}
-                        <div className="flex justify-between items-start mb-1">
-                           <h4 className={`font-bold text-sm ${idx === 0 ? 'text-blue-800' : 'text-slate-800'}`}>{ann.title}</h4>
-                           {idx === 0 && <span className="text-[10px] uppercase font-bold text-blue-500 bg-blue-100 px-2 py-1 rounded-md">Penting</span>}
-                        </div>
-                        <p className={`text-sm leading-relaxed font-medium ${idx === 0 ? 'text-blue-700' : 'text-slate-500'}`}>{ann.content}</p>
-                        <p className={`text-[10px] font-bold uppercase tracking-wider mt-2 opacity-60 ${idx === 0 ? 'text-blue-600' : 'text-slate-400'}`}>
-                           {new Date(ann.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} • {ann.authorName}
-                        </p>
-                     </div>
-                  ))
-               )}
+               {(() => {
+                 const today = new Date();
+                 today.setHours(0, 0, 0, 0);
+                 
+                 const activeAnnouncements = announcements.filter(ann => {
+                    const start = ann.startDate ? new Date(ann.startDate) : null;
+                    const end = ann.endDate ? new Date(ann.endDate) : null;
+                    if (start) start.setHours(0,0,0,0);
+                    if (end) end.setHours(23,59,59,999);
+                    
+                    const isStarted = !start || today >= start;
+                    const isNotEnded = !end || today <= end;
+                    
+                    return isStarted && isNotEnded;
+                 });
+
+                 if (activeAnnouncements.length === 0) {
+                    return <p className="text-center py-6 text-slate-400 font-bold italic text-sm">Belum ada pengumuman.</p>;
+                 }
+
+                 return activeAnnouncements.slice(0, 5).map((ann, idx) => (
+                    <div key={ann.id} className={`p-4 rounded-3xl relative overflow-hidden flex flex-col gap-4 ${idx === 0 ? 'bg-indigo-50 border border-indigo-100 shadow-sm' : 'bg-slate-50 border border-slate-100'}`}>
+                       {idx === 0 && <div className="absolute top-0 left-0 w-1.5 h-full bg-indigo-500"></div>}
+                       
+                       <div className="flex gap-4">
+                          {ann.image && (
+                             <div className="w-20 h-20 rounded-2xl overflow-hidden border border-white shadow-sm shrink-0">
+                                <img src={ann.image} alt={ann.title} className="w-full h-full object-cover" />
+                             </div>
+                          )}
+                          <div className="flex-1">
+                             <div className="flex justify-between items-start mb-1">
+                                <h4 className={`font-black text-sm uppercase tracking-tight ${idx === 0 ? 'text-indigo-900' : 'text-slate-800'}`}>{ann.title}</h4>
+                                {idx === 0 && <span className="text-[9px] uppercase font-black text-white bg-indigo-500 px-2 py-0.5 rounded-full shadow-sm">Terbaru</span>}
+                             </div>
+                             <p className={`text-sm leading-relaxed font-bold ${idx === 0 ? 'text-indigo-700/80' : 'text-slate-500'}`}>{ann.content}</p>
+                          </div>
+                       </div>
+
+                       <div className="flex items-center justify-between border-t border-black/5 pt-3">
+                          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest opacity-60">
+                             <Clock size={12} />
+                             {new Date(ann.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} • {ann.authorName}
+                          </div>
+                       </div>
+                    </div>
+                 ));
+               })()}
             </div>
          </div>
       </div>

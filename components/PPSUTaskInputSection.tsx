@@ -1,17 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Camera, MapPin, RefreshCw, CheckCircle2, AlertTriangle, Send, ShieldCheck, ClipboardList } from 'lucide-react';
-import { User as UserType, TugasPPSU, Staff, ReportStatus } from '../types';
+import { User as UserType, TugasPPSU, Staff, ReportStatus, AttendanceRecord } from '../types';
 import LocationMiniMap from './LocationMiniMap';
 import { apiService } from '../services/api';
 
-interface PPSUTaskInputSectionProps {
+export interface PPSUTaskInputSectionProps {
   user: UserType;
   tugasList: TugasPPSU[];
   setTugasList: React.Dispatch<React.SetStateAction<TugasPPSU[]>>;
-  attendanceRecords?: any[];
+  attendanceRecords?: AttendanceRecord[];
+  schedules?: any[];
+  staffList?: any[];
 }
 
-const PPSUTaskInputSection: React.FC<PPSUTaskInputSectionProps> = ({ user, tugasList, setTugasList, attendanceRecords = [] }) => {
+const PPSUTaskInputSection: React.FC<PPSUTaskInputSectionProps> = ({ user, tugasList, setTugasList, attendanceRecords = [], schedules = [], staffList = [] }) => {
   const [step, setStep] = useState<'idle' | 'form' | 'locating' | 'verify_location' | 'camera' | 'success'>('idle');
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [photo, setPhoto] = useState<string | null>(null);

@@ -92,6 +92,7 @@ const LayoutAdmin: React.FC<LayoutAdminProps> = ({
       items: [
         { id: 'users', label: 'User Management', icon: <UserCog size={20} />, color: 'bg-slate-600' },
         { id: 'settings', label: 'Setting Aplikasi', icon: <Settings size={20} />, color: 'bg-slate-600' },
+        { id: 'wa-logs', label: 'WhatsApp Logs', icon: <History size={20} />, color: 'bg-indigo-600' },
       ]
     }
   ];

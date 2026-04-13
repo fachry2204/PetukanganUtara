@@ -65,7 +65,7 @@ const LayoutPPSU: React.FC<LayoutPPSUProps> = ({
                <h1 className="text-sm font-black text-slate-800 tracking-tight">SIPETUT MOBILE</h1>
                <div className="flex items-center gap-1.5">
                   <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{user.role} Aktif</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{user.name} • {user.username}</span>
                </div>
             </div>
          </div>

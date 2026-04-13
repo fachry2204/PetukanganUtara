@@ -9,7 +9,9 @@ import {
   Calendar, 
   Building2, 
   AlertTriangle, 
-  MapPinned 
+  MapPinned,
+  Clock,
+  Megaphone
 } from 'lucide-react';
 
 interface StaffDashboardSectionProps {
@@ -34,7 +36,17 @@ const StaffDashboardSection: React.FC<StaffDashboardSectionProps> = ({
   const pendingTugas = tugasList.filter(r => r.status === 'Menunggu Verifikasi');
   const malePPSU = staff.filter(s => s.jenisKelamin === 'Laki-Laki').length;
   const femalePPSU = staff.filter(s => s.jenisKelamin === 'Perempuan').length;
-  const recentAnnouncements = announcements.slice(0, 3); // show latest 3
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const activeAnnouncements = announcements.filter(ann => {
+     const start = ann.startDate ? new Date(ann.startDate) : null;
+     const end = ann.endDate ? new Date(ann.endDate) : null;
+     if (start) start.setHours(0,0,0,0);
+     if (end) end.setHours(23,59,59,999);
+     return (!start || today >= start) && (!end || today <= end);
+  });
+  const recentAnnouncements = activeAnnouncements.slice(0, 3); // show latest 3 active ones
 
   return (
     <div className="space-y-6">
@@ -171,7 +183,7 @@ const StaffDashboardSection: React.FC<StaffDashboardSectionProps> = ({
          {/* Announcements History */}
          <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
             <h3 className="text-lg font-black text-slate-800 mb-6 flex items-center gap-2">
-               <MapPinned className="text-indigo-600" /> Pengumuman Terbaru
+               <Megaphone className="text-indigo-600" size={20} /> Pengumuman Terbaru
             </h3>
             <div className="space-y-4">
                {recentAnnouncements.length === 0 ? (
@@ -179,14 +191,19 @@ const StaffDashboardSection: React.FC<StaffDashboardSectionProps> = ({
                ) : (
                   recentAnnouncements.map(ann => (
                      <div key={ann.id} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-white text-indigo-500 flex items-center justify-center shrink-0 shadow-sm">
-                           <Calendar size={20} />
+                        <div className="w-12 h-12 rounded-2xl bg-white text-indigo-500 flex items-center justify-center shrink-0 shadow-sm border border-slate-100 overflow-hidden">
+                           {ann.image ? (
+                             <img src={ann.image} alt={ann.title} className="w-full h-full object-cover" />
+                           ) : (
+                              <Clock size={20} />
+                           )}
                         </div>
-                        <div>
-                           <h4 className="font-bold text-slate-800">{ann.title}</h4>
-                           <p className="text-xs text-slate-500 line-clamp-2 mt-1">{ann.content}</p>
-                           <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mt-2">
-                              {new Date(ann.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long' })} • Oleh {ann.authorName}
+                        <div className="flex-1">
+                           <h4 className="font-bold text-slate-800 line-clamp-1">{ann.title}</h4>
+                           <p className="text-xs text-slate-500 line-clamp-1 mt-1">{ann.content}</p>
+                           <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mt-2 flex items-center gap-1">
+                              <Calendar size={10} />
+                              {new Date(ann.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long' })} • {ann.authorName}
                            </p>
                         </div>
                      </div>

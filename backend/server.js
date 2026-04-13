@@ -3,6 +3,10 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const db = require('./db');
+const waService = require('./services/whatsappService');
+
+// Initialize WA Service
+waService.init();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -21,6 +25,9 @@ const announcementsRoutes = require('./routes/announcements');
 const sosRoutes = require('./routes/sos');
 const settingsRoutes = require('./routes/settings');
 const jadwalRoutes = require('./routes/jadwal');
+const attendanceRequestsRoutes = require('./routes/attendanceRequests');
+const whatsappRoutes = require('./routes/whatsapp');
+const whatsappLogsRoutes = require('./routes/whatsapp_logs');
 
 // API Khusus Waktu Server (Anti-Mock Time)
 app.get('/api/time', (req, res) => {
@@ -36,6 +43,9 @@ app.use('/api/announcements', announcementsRoutes);
 app.use('/api/sos', sosRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/jadwal', jadwalRoutes);
+app.use('/api/attendance-requests', attendanceRequestsRoutes);
+app.use('/api/whatsapp', whatsappRoutes);
+app.use('/api/whatsapp-logs', whatsappLogsRoutes);
 
 // Global Error Handler for better monitoring (Scaling)
 app.use((err, req, res, next) => {

@@ -1,6 +1,6 @@
 
-import React, { useState, useRef, useEffect } from 'react';
-import { Camera, MapPin, RefreshCw, CheckCircle2, AlertTriangle, User } from 'lucide-react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { Camera, MapPin, RefreshCw, CheckCircle2, AlertTriangle, User, History as HistoryIcon } from 'lucide-react';
 import { User as UserType, AttendanceRecord, AttendanceType } from '../types';
 import LocationMiniMap from './LocationMiniMap';
 import { apiService } from '../services/api';
@@ -8,13 +8,17 @@ import { apiService } from '../services/api';
 interface AttendanceSectionProps {
   user: UserType;
   attendanceRecords?: AttendanceRecord[];
+  schedules?: any[];
+  staffList?: any[];
   onRecord?: (record: AttendanceRecord) => void;
 }
 
-const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user, attendanceRecords = [], onRecord }) => {
+const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user, attendanceRecords = [], schedules = [], staffList = [], onRecord }) => {
   const [step, setStep] = useState<'idle' | 'locating' | 'verify_location' | 'camera' | 'success'>('idle');
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [photo, setPhoto] = useState<string | null>(null);
+  const [requests, setRequests] = useState<any[]>([]);
+  const [isRequesting, setIsRequesting] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -24,29 +28,78 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user, attendanceR
   const [isSecure, setIsSecure] = useState<boolean>(false);
   const [address, setAddress] = useState<string>('Memuat detail alamat...');
   
+  const DAYS = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+  const todayDayName = DAYS[new Date().getDay()];
   const todayDateStr = new Date().toISOString().split('T')[0];
+
+  const mySchedules = useMemo(() => {
+    const myStaffMember = staffList.find(s => s.nik === user.nik || s.nomorAnggota === user.username);
+    const resolvedNik = myStaffMember ? myStaffMember.nik : user.nik;
+    return schedules.filter(s => {
+        const sNik = String(s.nik || '');
+        const sStaffId = String(s.staff_id || '');
+        const sMemberId = String(s.nomor_anggota || '');
+        
+        const isMyNik = sNik && (sNik === String(user.nik || '') || (myStaffMember && sNik === String(myStaffMember.nik)));
+        const isMyStaffId = sStaffId && (sStaffId === String(user.id || '') || (myStaffMember && sStaffId === String(myStaffMember.id)));
+        const isMyMemberId = sMemberId && (sMemberId === String(user.username || '') || (myStaffMember && sMemberId === String(myStaffMember.nomorAnggota)));
+        
+        const isMySchedule = isMyNik || isMyStaffId || isMyMemberId;
+        const sDateStr = s.date ? new Date(s.date).toISOString().split('T')[0] : '';
+        return isMySchedule && sDateStr === todayDateStr;
+    });
+  }, [schedules, user.nik, user.username, staffList, todayDateStr]);
+
+  const fetchMyRequests = async () => {
+    try {
+        const data = await apiService.getMyAttendanceRequests(user.nik!);
+        setRequests(data || []);
+    } catch (err) {
+        console.error("Failed to fetch requests", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchMyRequests();
+  }, [user.nik]);
+
+  const approvedRequestForToday = useMemo(() => {
+    return requests.find(r => r.request_date.split('T')[0] === todayDateStr && r.status === 'APPROVED');
+  }, [requests, todayDateStr]);
+
+  const activeSchedule = useMemo(() => {
+    if (approvedRequestForToday) return { id: `REQ-${approvedRequestForToday.id}`, shift: 'MANUAL', area: 'Zona Terbuka (Manual)', start_time: '00:00', end_time: '23:59' };
+    if (mySchedules.length === 0) return null;
+    const now = new Date().toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit' }).replace(/\./g, ':');
+    // Find a schedule where 'now' is within start and end time (or the closest one)
+    return mySchedules.find(s => now >= s.start_time.slice(0, 5) && now <= s.end_time.slice(0, 5)) || mySchedules[0];
+  }, [mySchedules, approvedRequestForToday]);
   
   const checkHasAttended = (type: string) => {
       return attendanceRecords.some(r => 
-        r.userNik === user.nik && 
+        (r.userNik === user.nik || r.userId === user.id) && 
         r.type === type && 
         r.timestamp.startsWith(todayDateStr)
       );
   };
 
-  const [hasCheckedIn, setHasCheckedIn] = useState<boolean>(() => checkHasAttended('Absen Masuk'));
-  const [hasIstirahat, setHasIstirahat] = useState<boolean>(() => checkHasAttended('Istirahat'));
-  const [hasSelesaiIstirahat, setHasSelesaiIstirahat] = useState<boolean>(() => checkHasAttended('Selesai Istirahat'));
-  const [hasCheckedOut, setHasCheckedOut] = useState<boolean>(() => checkHasAttended('Absen Pulang'));
+  const hasCheckedIn = useMemo(() => checkHasAttended('Absen Masuk'), [attendanceRecords, todayDateStr, user.nik, user.id, activeSchedule]);
+  const hasIstirahat = useMemo(() => checkHasAttended('Istirahat'), [attendanceRecords, todayDateStr, user.nik, user.id, activeSchedule]);
+  const hasSelesaiIstirahat = useMemo(() => checkHasAttended('Selesai Istirahat'), [attendanceRecords, todayDateStr, user.nik, user.id, activeSchedule]);
+  const hasCheckedOut = useMemo(() => checkHasAttended('Absen Pulang'), [attendanceRecords, todayDateStr, user.nik, user.id, activeSchedule]);
+  
   const [istirahatDurationStr, setIstirahatDurationStr] = useState<string | null>(null);
   
   type AttendanceType = 'Absen Masuk' | 'Istirahat' | 'Selesai Istirahat' | 'Absen Pulang';
   
-  const [attendanceType, setAttendanceType] = useState<AttendanceType>(
-      !hasCheckedIn ? 'Absen Masuk' : 
-      !hasIstirahat ? 'Istirahat' : 
-      !hasSelesaiIstirahat ? 'Selesai Istirahat' : 'Absen Pulang'
-  );
+  const [attendanceType, setAttendanceType] = useState<AttendanceType>('Absen Masuk');
+
+  useEffect(() => {
+    if (!hasCheckedIn) setAttendanceType('Absen Masuk');
+    else if (!hasIstirahat) setAttendanceType('Istirahat');
+    else if (!hasSelesaiIstirahat) setAttendanceType('Selesai Istirahat');
+    else if (!hasCheckedOut) setAttendanceType('Absen Pulang');
+  }, [hasCheckedIn, hasIstirahat, hasSelesaiIstirahat, hasCheckedOut]);
 
   // Update real-time clock independently of the device time via offset
   useEffect(() => {
@@ -180,18 +233,22 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user, attendanceR
             photoUrl: imageSrc,
             nik: user.nik || 'unknown',
             staffName: user.name || user.username || 'unknown',
-            address: address
+            address: address,
+            jadwalId: activeSchedule?.id || null
         };
 
-        apiService.createAttendance(newRecord).catch(err => console.error("API Attendance Error:", err));
+        apiService.createAttendance(newRecord).catch(err => {
+            console.error("API Attendance Error:", err);
+            if (err.response?.data?.error) {
+                alert(err.response.data.error);
+                setStep('idle');
+            }
+        });
         
-        if (attendanceType === 'Absen Masuk') setHasCheckedIn(true);
         if (attendanceType === 'Istirahat') {
-            setHasIstirahat(true);
             localStorage.setItem(`istirahatTime_${user.nik}_${todayDateStr}`, timeToPrint.getTime().toString());
         }
         if (attendanceType === 'Selesai Istirahat') {
-            setHasSelesaiIstirahat(true);
             const startTimeStr = localStorage.getItem(`istirahatTime_${user.nik}_${todayDateStr}`);
             if (startTimeStr) {
                 const startMs = parseInt(startTimeStr, 10);
@@ -203,7 +260,6 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user, attendanceR
                 setIstirahatDurationStr(`${hours} Jam ${minutes} Menit`);
             }
         }
-        if (attendanceType === 'Absen Pulang') setHasCheckedOut(true);
 
         // Notify parent of the new record
         if (onRecord) {
@@ -233,21 +289,81 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user, attendanceR
   };
 
   const reset = () => {
-    if (!hasCheckedIn) setAttendanceType('Absen Masuk');
-    else if (!hasIstirahat) setAttendanceType('Istirahat');
-    else if (!hasSelesaiIstirahat) setAttendanceType('Selesai Istirahat');
-    else if (!hasCheckedOut) setAttendanceType('Absen Pulang');
-    
     setStep('idle');
     setPhoto(null);
     setLocation(null);
     setStream(null);
   };
 
+  const handleRequestOpenAbsen = async () => {
+    setIsRequesting(true);
+    try {
+        await apiService.createAttendanceRequest({
+            staff_id: user.id,
+            nik: user.nik,
+            staff_name: user.name,
+            request_date: todayDateStr
+        });
+        alert("Permintaan buka absen berhasil dikirim. Harap tunggu verifikasi Admin/Pimpinan.");
+        fetchMyRequests();
+    } catch (err: any) {
+        alert(err.response?.data?.error || "Gagal mengirim permintaan.");
+    } finally {
+        setIsRequesting(false);
+    }
+  };
+
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-        <h2 className="text-xl font-bold text-slate-800 mb-2">Absensi Harian PPSU</h2>
+        <h2 className="text-xl font-bold text-slate-800 mb-1">Absensi Harian PPSU</h2>
+        {activeSchedule ? (
+            <div className={`p-3 rounded-2xl flex items-center gap-3 mb-4 ${approvedRequestForToday ? 'bg-emerald-50 border border-emerald-100' : 'bg-indigo-50 border border-indigo-100'}`}>
+                <div className={`${approvedRequestForToday ? 'bg-emerald-600' : 'bg-indigo-600'} text-white p-2 rounded-xl`}>
+                    <HistoryIcon size={18} />
+                </div>
+                <div>
+                   <p className={`text-[10px] font-black uppercase leading-none mb-1 ${approvedRequestForToday ? 'text-emerald-400' : 'text-indigo-400'}`}>{approvedRequestForToday ? 'Akses Absen Dibuka (Manual)' : 'Jadwal Tugas Hari Ini'}</p>
+                   <p className="text-xs font-bold text-slate-700">{activeSchedule.shift} {activeSchedule.start_time && `(${activeSchedule.start_time.slice(0, 5)} - ${activeSchedule.end_time.slice(0, 5)})`} • {activeSchedule.area}</p>
+                </div>
+            </div>
+        ) : (
+            <div className="bg-amber-50 border border-amber-100 p-3 rounded-2xl flex flex-col gap-3 mb-4">
+                <div className="flex items-center gap-3">
+                    <div className="bg-amber-500 text-white p-2 rounded-xl">
+                        <AlertTriangle size={18} />
+                    </div>
+                    <div>
+                    <p className="text-[10px] font-black uppercase text-amber-600 leading-none mb-1">Akses Absen Terkunci</p>
+                    <p className="text-xs font-bold text-slate-700 italic">Anda tidak memiliki jadwal tugas hari ini.</p>
+                    </div>
+                </div>
+                
+                {(() => {
+                    const todayReq = requests.find(r => r.request_date.split('T')[0] === todayDateStr);
+                    if (todayReq) {
+                        return (
+                            <div className={`p-3 rounded-xl border flex items-center justify-between ${todayReq.status === 'PENDING' ? 'bg-white border-amber-200 text-amber-600' : 'bg-rose-50 border-rose-100 text-rose-600'}`}>
+                                <div className="flex items-center gap-2">
+                                    <div className={`w-2 h-2 rounded-full animate-pulse ${todayReq.status === 'PENDING' ? 'bg-amber-500' : 'bg-rose-500'}`}></div>
+                                    <span className="text-[10px] font-black uppercase">Status: {todayReq.status}</span>
+                                </div>
+                                <span className="text-[10px] font-bold italic">{todayReq.status === 'PENDING' ? 'Menunggu Verifikasi...' : 'Ditolak Pimpinan'}</span>
+                            </div>
+                        );
+                    }
+                    return (
+                        <button 
+                            onClick={handleRequestOpenAbsen}
+                            disabled={isRequesting}
+                            className="w-full py-2 bg-amber-600 hover:bg-amber-700 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg transition-all"
+                        >
+                            {isRequesting ? 'Mengirim...' : 'Request Buka Absen (Hubungi Pimpinan)'}
+                        </button>
+                    );
+                })()}
+            </div>
+        )}
         <p className="text-sm text-slate-500 mb-6">Silahkan melakukan absensi dengan foto selfie dan tag lokasi GPS untuk memulai tugas.</p>
 
         {error && (
@@ -313,8 +429,8 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user, attendanceR
 
                 <button 
                   onClick={startAttendance}
-                  disabled={!hasCheckedIn && attendanceType !== 'Absen Masuk'}
-                  className={`w-full max-w-sm py-4 text-white font-black rounded-xl shadow-lg transition-all flex items-center justify-center gap-3 ${(!hasCheckedIn && attendanceType !== 'Absen Masuk') ? 'bg-slate-300 cursor-not-allowed' : 'bg-slate-900 hover:bg-black shadow-slate-200'}`}
+                  disabled={(!hasCheckedIn && attendanceType !== 'Absen Masuk') || !activeSchedule}
+                  className={`w-full max-w-sm py-4 text-white font-black rounded-xl shadow-lg transition-all flex items-center justify-center gap-3 ${((!hasCheckedIn && attendanceType !== 'Absen Masuk') || !activeSchedule) ? 'bg-slate-300 cursor-not-allowed' : 'bg-slate-900 hover:bg-black shadow-slate-200'}`}
                 >
                   <Camera size={20} /> Buka Kamera & Deteksi GPS
                 </button>

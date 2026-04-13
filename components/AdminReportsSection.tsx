@@ -25,6 +25,36 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
    const [selectedAttendance, setSelectedAttendance] = useState<AttendanceRecord | null>(null);
    const [selectedTask, setSelectedTask] = useState<TugasPPSU | null>(null);
    const [showMapModal, setShowMapModal] = useState<{ lat: number; lng: number; address: string } | null>(null);
+   const [attendanceRequests, setAttendanceRequests] = useState<any[]>([]);
+   const [activeSubTab, setActiveSubTab] = useState<'LIST' | 'REQUESTS'>('LIST');
+
+   const fetchRequests = async () => {
+      try {
+         const data = await apiService.getAttendanceRequests();
+         setAttendanceRequests(data || []);
+      } catch (err) {
+         console.error("Failed to fetch attendance requests", err);
+      }
+   };
+
+   React.useEffect(() => {
+      if (mode === 'ABSEN') {
+         fetchRequests();
+      }
+   }, [mode]);
+
+   const handleUpdateRequestStatus = async (id: number, status: 'APPROVED' | 'REJECTED') => {
+      try {
+          await apiService.updateAttendanceRequest(id, {
+              status,
+              approved_by: user.name || user.username
+          });
+          alert(`Permintaan berhasil ${status === 'APPROVED' ? 'Disetujui' : 'Ditolak'}!`);
+          fetchRequests();
+      } catch (err) {
+          alert("Gagal mengupdate status permintaan.");
+      }
+   };
 
    const getPPSUID = (nik?: string) => {
       if (!nik) return '-';
@@ -134,7 +164,29 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
                <h2 className="text-2xl font-black text-slate-800">Data Absen PPSU</h2>
                <p className="text-slate-500 text-sm">Rekapitulasi kehadiran personil pasukan orange hari ini.</p>
             </div>
-            <div className="flex gap-2">
+            
+            <div className="flex bg-slate-100 p-1.5 rounded-2xl shrink-0">
+               <button 
+                  onClick={() => setActiveSubTab('LIST')}
+                  className={`px-4 py-1.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeSubTab === 'LIST' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+               >
+                  Tabel Absensi
+               </button>
+               <button 
+                  onClick={() => setActiveSubTab('REQUESTS')}
+                  className={`px-4 py-1.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all relative ${activeSubTab === 'REQUESTS' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+               >
+                  Request Buka Absen
+                  {attendanceRequests.filter(r => r.status === 'PENDING').length > 0 && (
+                     <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-rose-500 text-white text-[9px] flex items-center justify-center rounded-full animate-bounce border-2 border-white">
+                        {attendanceRequests.filter(r => r.status === 'PENDING').length}
+                     </span>
+                  )}
+               </button>
+            </div>
+         </div>
+
+         <div className="flex flex-wrap gap-2 items-center">
                <div className="relative">
                   <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                   <input
@@ -172,8 +224,8 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
                    onChange={(e) => setFilterZona(e.target.value)}
                 >
                    <option value="ALL">Semua Zona</option>
-                   {settings.zona_list && settings.zona_list.map((z: any) => (
-                      <option key={z.id} value={z.name}>{z.name}</option>
+                   {settings.zonaList && settings.zonaList.map((z: string, idx: number) => (
+                      <option key={idx} value={z}>{z}</option>
                    ))}
                 </select>
 
@@ -183,116 +235,189 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
                    onChange={(e) => setFilterShift(e.target.value)}
                 >
                    <option value="ALL">Semua Shift</option>
-                   {settings.shift_config && settings.shift_config.map((s: any) => (
-                      <option key={s.id} value={s.name}>{s.name}</option>
+                   {settings.shiftConfig && settings.shiftConfig.map((s: any, idx: number) => (
+                      <option key={idx} value={s.name}>{s.name}</option>
                    ))}
                 </select>
-             </div>
-          </div>
+              </div>
 
-         <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
-            <div className="overflow-x-auto custom-scrollbar">
-               <table className="w-full text-left text-sm border-collapse">
-                  <thead>
-                     <tr className="bg-slate-50 border-b border-slate-100 text-slate-400 uppercase text-[10px] font-black tracking-widest">
-                         <th className="py-4 px-4 text-center w-16">No</th>
-                         <th className="py-4 px-4">Nama Personil</th>
-                         <th className="py-4 px-4 text-center">Jenis Absen</th>
-                         <th className="py-4 px-4 text-center">Zona</th>
-                         <th className="py-4 px-4 text-center">Shift</th>
-                         <th className="py-4 px-4 text-center">Tanggal</th>
-                         <th className="py-4 px-4 text-center">Waktu</th>
-                         <th className="py-4 px-4">Lokasi & Alamat</th>
-                         <th className="py-4 px-4 text-center">Foto</th>
-                         <th className="py-4 px-4 text-center">Detail</th>
-                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50">
-                     {filteredAttendance.length === 0 ? (
-                        <tr>
-                           <td colSpan={10} className="py-20 text-center text-slate-400">
-                              <Camera size={48} className="mx-auto mb-3 opacity-20" />
-                              <p className="font-bold uppercase tracking-widest text-xs">Belum Ada Data Absensi</p>
-                           </td>
+         {activeSubTab === 'LIST' ? (
+            <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
+               <div className="overflow-x-auto custom-scrollbar">
+                  <table className="w-full text-left text-sm border-collapse">
+                     <thead>
+                        <tr className="bg-slate-50 border-b border-slate-100 text-slate-400 uppercase text-[10px] font-black tracking-widest">
+                           <th className="py-4 px-4 text-center w-16">No</th>
+                           <th className="py-4 px-4">Nama Personil</th>
+                           <th className="py-4 px-4 text-center">Jenis Absen</th>
+                           <th className="py-4 px-4 text-center">Zona</th>
+                           <th className="py-4 px-4 text-center">Shift</th>
+                           <th className="py-4 px-4 text-center">Tanggal</th>
+                           <th className="py-4 px-4 text-center">Waktu</th>
+                           <th className="py-4 px-4">Lokasi & Alamat</th>
+                           <th className="py-4 px-4 text-center">Foto</th>
+                           <th className="py-4 px-4 text-center">Detail</th>
                         </tr>
-                     ) : (
-                        filteredAttendance.map((rec, idx) => (
-                           <tr key={rec.id} className="hover:bg-slate-50/80 transition-colors group">
-                               <td className="py-4 px-4 text-center font-black text-slate-300 group-hover:text-indigo-400 transition-colors">{idx + 1}</td>
-                               <td className="py-4 px-4">
-                                  <p className="font-black text-slate-800 uppercase text-xs tracking-tight">{rec.userName}</p>
-                                  <p className="text-[10px] font-bold font-mono text-slate-400">NIK: {rec.userNik}</p>
-                               </td>
-                               <td className="py-4 px-4 text-center">
-                                  <span className={`text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-wider ${rec.type === 'Absen Masuk' ? 'bg-emerald-50 text-emerald-600' :
-                                        rec.type === 'Absen Pulang' ? 'bg-rose-50 text-rose-600' :
-                                           rec.type === 'Istirahat' ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'
-                                     }`}>
-                                     {rec.type}
-                                  </span>
-                               </td>
-                               <td className="py-4 px-4 text-center">
-                                  {(() => {
-                                      const dayName = new Date(rec.timestamp).toLocaleDateString('en-US', { weekday: 'long' });
-                                      const staffMember = staff.find(s => s.nik === rec.userNik);
-                                      const schedule = schedules.find(s => s.staff_id === staffMember?.id && s.day === dayName);
-                                      return <span className="text-[10px] font-bold text-slate-600 uppercase bg-slate-100 px-2 py-1 rounded-md">{schedule ? schedule.area : '-'}</span>;
-                                  })()}
-                               </td>
-                               <td className="py-4 px-4 text-center">
-                                  {(() => {
-                                      const dayName = new Date(rec.timestamp).toLocaleDateString('en-US', { weekday: 'long' });
-                                      const staffMember = staff.find(s => s.nik === rec.userNik);
-                                      const schedule = schedules.find(s => s.staff_id === staffMember?.id && s.day === dayName);
-                                      return <span className="text-[10px] font-black text-indigo-600 uppercase">{schedule ? schedule.shift : '-'}</span>;
-                                  })()}
-                               </td>
-                               <td className="py-4 px-4 text-center font-bold text-slate-500 text-xs text-nowrap">
-                                  {new Date(rec.timestamp).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
-                               </td>
-                               <td className="py-4 px-4 text-center font-black text-slate-800 text-xs">
-                                  {new Date(rec.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':')}
-                               </td>
-                              <td className="py-4 px-4 max-w-xs">
-                                 <div className="flex items-start gap-2">
-                                    <button 
-                                       onClick={() => setShowMapModal({ lat: rec.latitude, lng: rec.longitude, address: rec.address })}
-                                       className="text-indigo-500 hover:text-indigo-700 p-1.5 hover:bg-indigo-50 rounded-lg transition-all shrink-0"
-                                    >
-                                       <MapPin size={16} />
-                                    </button>
-                                    <div>
-                                       <p className="text-[10px] font-mono font-bold text-indigo-500 mb-0.5">{rec.latitude.toFixed(6)}, {rec.longitude.toFixed(6)}</p>
-                                       <p className="text-[10px] text-slate-500 leading-normal line-clamp-2" title={rec.address}>{rec.address}</p>
-                                    </div>
-                                 </div>
-                              </td>
-                              <td className="py-4 px-6 text-center">
-                                 <button
-                                    onClick={() => setSelectedPhoto(rec.photo)}
-                                    className="relative w-10 h-10 rounded-lg overflow-hidden border border-slate-200 hover:ring-2 hover:ring-indigo-500 transition-all mx-auto shadow-sm"
-                                 >
-                                    <img src={rec.photo} className="w-full h-full object-cover" />
-                                    <div className="absolute inset-0 bg-black/20 opacity-0 hover:opacity-100 flex items-center justify-center text-white">
-                                       <Eye size={14} />
-                                    </div>
-                                 </button>
-                              </td>
-                              <td className="py-4 px-6 text-center">
-                                 <button
-                                    onClick={() => setSelectedAttendance(rec)}
-                                    className="p-2 text-indigo-500 hover:bg-indigo-50 rounded-lg transition-all border border-indigo-100 shadow-sm"
-                                 >
-                                    <FileText size={18} />
-                                 </button>
+                     </thead>
+                     <tbody className="divide-y divide-slate-50">
+                        {filteredAttendance.length === 0 ? (
+                           <tr>
+                              <td colSpan={10} className="py-20 text-center text-slate-400">
+                                 <Camera size={48} className="mx-auto mb-3 opacity-20" />
+                                 <p className="font-bold uppercase tracking-widest text-xs">Belum Ada Data Absensi</p>
                               </td>
                            </tr>
-                        ))
-                     )}
-                  </tbody>
-               </table>
+                        ) : (
+                           filteredAttendance.map((rec, idx) => (
+                              <tr key={rec.id} className="hover:bg-slate-50/80 transition-colors group">
+                                 <td className="py-4 px-4 text-center font-black text-slate-300 group-hover:text-indigo-400 transition-colors">{idx + 1}</td>
+                                 <td className="py-4 px-4">
+                                    <p className="font-black text-slate-800 uppercase text-xs tracking-tight">{rec.userName}</p>
+                                    <p className="text-[10px] font-bold font-mono text-slate-400">NIK: {rec.userNik}</p>
+                                 </td>
+                                 <td className="py-4 px-4 text-center">
+                                    <span className={`text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-wider ${rec.type === 'Absen Masuk' ? 'bg-emerald-50 text-emerald-600' :
+                                          rec.type === 'Absen Pulang' ? 'bg-rose-50 text-rose-600' :
+                                             rec.type === 'Istirahat' ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'
+                                       }`}>
+                                       {rec.type}
+                                    </span>
+                                 </td>
+                                 <td className="py-4 px-4 text-center">
+                                    {(() => {
+                                       const dayName = new Date(rec.timestamp).toLocaleDateString('en-US', { weekday: 'long' });
+                                       const staffMember = staff.find(s => s.nik === rec.userNik);
+                                       const schedule = schedules.find(s => s.staff_id === staffMember?.id && s.day === dayName);
+                                       return <span className="text-[10px] font-bold text-slate-600 uppercase bg-slate-100 px-2 py-1 rounded-md">{schedule ? schedule.area : (rec as any).jadwal_id?.startsWith('REQ') ? 'Zona Terbuka (Manual)' : '-'}</span>;
+                                    })()}
+                                 </td>
+                                 <td className="py-4 px-4 text-center">
+                                    {(() => {
+                                       const dayName = new Date(rec.timestamp).toLocaleDateString('en-US', { weekday: 'long' });
+                                       const staffMember = staff.find(s => s.nik === rec.userNik);
+                                       const schedule = schedules.find(s => s.staff_id === staffMember?.id && s.day === dayName);
+                                       return <span className="text-[10px] font-black text-indigo-600 uppercase">{schedule ? schedule.shift : (rec as any).jadwal_id?.startsWith('REQ') ? 'MANUAL' : '-'}</span>;
+                                    })()}
+                                 </td>
+                                 <td className="py-4 px-4 text-center font-bold text-slate-500 text-xs text-nowrap">
+                                    {new Date(rec.timestamp).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                 </td>
+                                 <td className="py-4 px-4 text-center font-black text-slate-800 text-xs">
+                                    {new Date(rec.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':')}
+                                 </td>
+                                 <td className="py-4 px-4 max-w-xs">
+                                    <div className="flex items-start gap-2">
+                                       <button 
+                                          onClick={() => setShowMapModal({ lat: rec.latitude, lng: rec.longitude, address: rec.address })}
+                                          className="text-indigo-500 hover:text-indigo-700 p-1.5 hover:bg-indigo-50 rounded-lg transition-all shrink-0"
+                                       >
+                                          <MapPin size={16} />
+                                       </button>
+                                       <div>
+                                          <p className="text-[10px] font-mono font-bold text-indigo-500 mb-0.5">{rec.latitude.toFixed(6)}, {rec.longitude.toFixed(6)}</p>
+                                          <p className="text-[10px] text-slate-500 leading-normal line-clamp-2" title={rec.address}>{rec.address}</p>
+                                       </div>
+                                    </div>
+                                 </td>
+                                 <td className="py-4 px-6 text-center">
+                                    <button
+                                       onClick={() => setSelectedPhoto(rec.photo)}
+                                       className="relative w-10 h-10 rounded-lg overflow-hidden border border-slate-200 hover:ring-2 hover:ring-indigo-500 transition-all mx-auto shadow-sm"
+                                    >
+                                       <img src={rec.photo} className="w-full h-full object-cover" />
+                                       <div className="absolute inset-0 bg-black/20 opacity-0 hover:opacity-100 flex items-center justify-center text-white">
+                                          <Eye size={14} />
+                                       </div>
+                                    </button>
+                                 </td>
+                                 <td className="py-4 px-6 text-center">
+                                    <button
+                                       onClick={() => setSelectedAttendance(rec)}
+                                       className="p-2 text-indigo-500 hover:bg-indigo-50 rounded-lg transition-all border border-indigo-100 shadow-sm"
+                                    >
+                                       <FileText size={18} />
+                                    </button>
+                                 </td>
+                              </tr>
+                           ))
+                        )}
+                     </tbody>
+                  </table>
+               </div>
             </div>
-         </div>
+         ) : (
+            <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
+               <div className="overflow-x-auto custom-scrollbar">
+                  <table className="w-full text-left text-sm border-collapse">
+                     <thead>
+                        <tr className="bg-slate-50 border-b border-slate-100 text-slate-400 uppercase text-[10px] font-black tracking-widest">
+                           <th className="py-4 px-4 text-center w-16">No</th>
+                           <th className="py-4 px-4">Nama Personil</th>
+                           <th className="py-4 px-4 text-center">Tanggal Request</th>
+                           <th className="py-4 px-4 text-center">Created At</th>
+                           <th className="py-4 px-4 text-center">Status</th>
+                           <th className="py-4 px-4 text-center">Action</th>
+                        </tr>
+                     </thead>
+                     <tbody className="divide-y divide-slate-50">
+                        {attendanceRequests.length === 0 ? (
+                           <tr>
+                              <td colSpan={6} className="py-20 text-center text-slate-400">
+                                 <FileText size={48} className="mx-auto mb-3 opacity-20" />
+                                 <p className="font-bold uppercase tracking-widest text-xs">Tidak Ada Permintaan Buka Absen</p>
+                              </td>
+                           </tr>
+                        ) : (
+                           attendanceRequests.map((req, idx) => (
+                              <tr key={req.id} className="hover:bg-slate-50/80 transition-colors">
+                                 <td className="py-4 px-4 text-center font-black text-slate-300">{idx + 1}</td>
+                                 <td className="py-4 px-4">
+                                    <p className="font-black text-slate-800 uppercase text-xs">{req.staff_name}</p>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">NIK: {req.nik} • ID: {getPPSUID(req.nik)}</p>
+                                 </td>
+                                 <td className="py-4 px-4 text-center font-bold text-slate-600">
+                                    {new Date(req.request_date).toLocaleDateString('id-ID', { dateStyle: 'medium' })}
+                                 </td>
+                                 <td className="py-4 px-4 text-center text-xs text-slate-400">
+                                    {new Date(req.created_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}
+                                 </td>
+                                 <td className="py-4 px-4 text-center uppercase tracking-widest text-[10px] font-black">
+                                    <span className={`px-3 py-1 rounded-full ${
+                                       req.status === 'PENDING' ? 'bg-amber-100 text-amber-600' :
+                                       req.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'
+                                    }`}>
+                                       {req.status}
+                                    </span>
+                                 </td>
+                                 <td className="py-4 px-4 text-center">
+                                    {req.status === 'PENDING' && (
+                                       <div className="flex items-center justify-center gap-2">
+                                          <button 
+                                             onClick={() => handleUpdateRequestStatus(req.id, 'APPROVED')}
+                                             className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest rounded-lg shadow-sm transition-all"
+                                          >
+                                             Approve
+                                          </button>
+                                          <button 
+                                             onClick={() => handleUpdateRequestStatus(req.id, 'REJECTED')}
+                                             className="px-3 py-1.5 bg-rose-500 hover:bg-rose-600 text-white text-[10px] font-black uppercase tracking-widest rounded-lg shadow-sm transition-all"
+                                          >
+                                             Reject
+                                          </button>
+                                       </div>
+                                    )}
+                                    {req.status !== 'PENDING' && (
+                                       <span className="text-[9px] font-bold text-slate-400">Oleh: {req.approved_by || '-'}</span>
+                                    )}
+                                 </td>
+                              </tr>
+                           ))
+                        )}
+                     </tbody>
+                  </table>
+               </div>
+            </div>
+         )}
       </div>
    );
 
@@ -329,8 +454,8 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
                    onChange={(e) => setFilterZona(e.target.value)}
                 >
                    <option value="ALL">Semua Zona</option>
-                   {settings.zona_list && settings.zona_list.map((z: any) => (
-                      <option key={z.id} value={z.name}>{z.name}</option>
+                   {settings.zonaList && settings.zonaList.map((z: any, idx: number) => (
+                      <option key={idx} value={z}>{z}</option>
                    ))}
                 </select>
 
@@ -340,8 +465,8 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
                    onChange={(e) => setFilterShift(e.target.value)}
                 >
                    <option value="ALL">Semua Shift</option>
-                   {settings.shift_config && settings.shift_config.map((s: any) => (
-                      <option key={s.id} value={s.name}>{s.name}</option>
+                   {settings.shiftConfig && settings.shiftConfig.map((s: any, idx: number) => (
+                      <option key={idx} value={s.name}>{s.name}</option>
                    ))}
                 </select>
             </div>
@@ -760,3 +885,4 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
 };
 
 export default AdminReportsSection;
+

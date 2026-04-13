@@ -36,6 +36,7 @@ import AttendanceSection from './components/AttendanceSection';
 import PPSUTaskInputSection from './components/PPSUTaskInputSection';
 import PPSUMyReportsSection from './components/PPSUMyReportsSection';
 import ScheduleManagementSection from './components/ScheduleManagementSection';
+import WhatsAppLogsSection from './components/WhatsAppLogsSection';
 
 const loadData = <T,>(key: string, fallback: T): T => {
   try {
@@ -60,7 +61,7 @@ const App: React.FC = () => {
   const location = useLocation();
   const [currentUser, setCurrentUser] = useState<User | null>(() => loadData('app_session', null)); 
   const [settings, setSettings] = useState<SystemSettings>({
-    systemName: 'SiPetut',
+    systemName: '',
     subName: 'Kelurahan Petukangan Utara',
     footerText: '\u00A9 2026 Kelurahan Petukangan Utara. All Rights Reserved.',
     appVersion: '1.0.0',
@@ -246,6 +247,7 @@ const App: React.FC = () => {
             <Route path="jadwal" element={<ScheduleManagementSection staffList={staffList} settings={settings} />} />
             <Route path="report" element={<AdminReportsSection mode="FULL_REPORT" attendanceRecords={attendanceRecords} tugasList={tugasList} user={currentUser!} users={users} staff={staffList} settings={settings} schedules={schedules} />} />
             <Route path="users" element={<UserManagementSection users={users} setUsers={setUsers} initialTab="SEMUA" />} />
+            <Route path="wa-logs" element={<WhatsAppLogsSection />} />
             <Route path="map" element={
               <MapSection 
                 tugasList={tugasList} 
@@ -279,12 +281,21 @@ const App: React.FC = () => {
         }>
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={
-              <PPSUSection user={currentUser!} staffList={staffList} setStaffList={setStaffList} attendanceRecords={attendanceRecords} announcements={announcements} />
+              <PPSUSection 
+                user={currentUser!} 
+                staffList={staffList} 
+                setStaffList={setStaffList} 
+                attendanceRecords={attendanceRecords} 
+                announcements={announcements} 
+                schedules={schedules}
+              />
             } />
             <Route path="absen" element={
               <AttendanceSection 
                 user={currentUser!} 
                 attendanceRecords={attendanceRecords} 
+                schedules={schedules}
+                staffList={staffList}
                 onRecord={(rec) => setAttendanceRecords([rec, ...attendanceRecords])} 
               />
             } />
@@ -294,6 +305,8 @@ const App: React.FC = () => {
                 tugasList={tugasList} 
                 setTugasList={setTugasList} 
                 attendanceRecords={attendanceRecords}
+                schedules={schedules}
+                staffList={staffList}
               />
             } />
             <Route path="history" element={

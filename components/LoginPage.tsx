@@ -47,21 +47,22 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, settings, users }) => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 relative overflow-hidden">
-      {/* Dynamic Background Image */}
+      {/* Dynamic Background Image - Changed to fixed for full viewport coverage */}
       {settings.loginBackground && (
         <div 
-          className="absolute inset-0 z-0 animate-in fade-in duration-1000 opacity-70"
+          className="fixed inset-0 z-0 animate-in fade-in duration-1000 opacity-70"
           style={{ 
             backgroundImage: `url(${settings.loginBackground})`,
             backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat'
+            backgroundPosition: 'bottom center',
+            backgroundRepeat: 'no-repeat',
+            backgroundAttachment: 'fixed'
           }}
         />
       )}
       
-      {/* Overlay Filter for Contrast - Black 40% */}
-      <div className="absolute inset-0 z-[1] bg-black/40 backdrop-blur-[2px]" />
+      {/* Overlay Filter - Changed to fixed */}
+      <div className="fixed inset-0 z-[1] bg-black/40 backdrop-blur-[2px]" />
 
 
 

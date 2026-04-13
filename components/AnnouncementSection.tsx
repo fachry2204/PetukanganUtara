@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Announcement, User, Role } from '../types';
-import { Send, Megaphone, Trash2, Users } from 'lucide-react';
+import { Send, Megaphone, Trash2, Users, Image as ImageIcon, Calendar, X, Clock } from 'lucide-react';
 import { apiService } from '../services/api';
 
 interface AnnouncementSectionProps {
@@ -16,8 +16,22 @@ const AnnouncementSection: React.FC<AnnouncementSectionProps> = ({ user, users, 
   const [targetType, setTargetType] = useState<'ALL' | 'ROLE' | 'USER'>('ALL');
   const [targetRole, setTargetRole] = useState<Role | ''>('');
   const [targetUserId, setTargetUserId] = useState<string>('');
+  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+  const [image, setImage] = useState<string | null>(null);
 
   const availableRoles: Role[] = ['Administrator', 'Admin', 'Pimpinan', 'Staff Kelurahan', 'PPSU'];
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handlePost = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,6 +48,9 @@ const AnnouncementSection: React.FC<AnnouncementSectionProps> = ({ user, users, 
       authorName: user.name || user.username,
       targetRole: targetType === 'ROLE' ? (targetRole as Role) : targetType === 'ALL' ? 'ALL' : undefined,
       targetUserId: targetType === 'USER' ? targetUserId : undefined,
+      startDate,
+      endDate,
+      image: image || undefined
     };
 
     try {
@@ -41,16 +58,25 @@ const AnnouncementSection: React.FC<AnnouncementSectionProps> = ({ user, users, 
       setAnnouncements([newAnnouncement, ...announcements]);
       setTitle('');
       setContent('');
-      setTargetType('ALL');
       setTargetRole('');
       setTargetUserId('');
+      setImage(null);
+      setStartDate(new Date().toISOString().split('T')[0]);
+      setEndDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
     } catch (error) {
       console.error("Failed to post announcement:", error);
     }
   };
 
-  const handleDelete = (id: string) => {
-    setAnnouncements(announcements.filter(a => a.id !== id));
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("Apakah Anda yakin ingin menghapus pengumuman ini?")) return;
+    try {
+      await apiService.deleteAnnouncement(id);
+      setAnnouncements(announcements.filter(a => a.id !== id));
+    } catch (error) {
+      console.error("Failed to delete announcement:", error);
+      alert("Gagal menghapus pengumuman");
+    }
   };
 
   return (
@@ -129,6 +155,65 @@ const AnnouncementSection: React.FC<AnnouncementSectionProps> = ({ user, users, 
             )}
           </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+             <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Tanggal Mulai Tampil</label>
+                <div className="relative">
+                   <Calendar size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                   <input
+                     type="date"
+                     value={startDate}
+                     onChange={(e) => setStartDate(e.target.value)}
+                     className="w-full border border-slate-200 rounded-xl pl-12 pr-4 py-3 bg-slate-50 focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-bold text-slate-700"
+                     required
+                   />
+                </div>
+             </div>
+             <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Tanggal Berakhir Tampil</label>
+                <div className="relative">
+                   <Calendar size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                   <input
+                     type="date"
+                     value={endDate}
+                     onChange={(e) => setEndDate(e.target.value)}
+                     className="w-full border border-slate-200 rounded-xl pl-12 pr-4 py-3 bg-slate-50 focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-bold text-slate-700"
+                     required
+                   />
+                </div>
+             </div>
+          </div>
+
+          <div>
+             <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Lampiran Gambar</label>
+             <div className="flex gap-4">
+                <div className="flex-1 relative">
+                   <input
+                     type="file"
+                     accept="image/*"
+                     onChange={handleImageUpload}
+                     className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                   />
+                   <div className="border-2 border-dashed border-slate-200 rounded-xl p-4 flex items-center justify-center gap-2 bg-slate-50 text-slate-400 font-bold text-sm group-hover:border-indigo-400 transition-all">
+                      <ImageIcon size={20} />
+                      {image ? 'Ganti Gambar' : 'Upload Gambar Pengumuman'}
+                   </div>
+                </div>
+                {image && (
+                   <div className="relative w-20 h-20 rounded-xl overflow-hidden border border-slate-200 group">
+                      <img src={image} alt="Preview" className="w-full h-full object-cover" />
+                      <button 
+                        type="button"
+                        onClick={() => setImage(null)}
+                        className="absolute inset-0 bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
+                      >
+                         <X size={20} />
+                      </button>
+                   </div>
+                )}
+             </div>
+          </div>
+
           <div className="flex justify-end pt-2">
             <button type="submit" className="bg-rose-500 hover:bg-rose-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all">
               <Send size={18} /> Kirim Pengumuman
@@ -156,16 +241,28 @@ const AnnouncementSection: React.FC<AnnouncementSectionProps> = ({ user, users, 
                     <Trash2 size={16} />
                   </button>
                 </div>
-                <p className="text-sm text-slate-600 mb-3">{ann.content}</p>
-                <div className="flex items-center justify-between text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-                  <div className="flex gap-2">
-                    <span>Oleh: {ann.authorName}</span>
-                    <span>•</span>
-                    <span>{new Date(ann.date).toLocaleString('id-ID')}</span>
+                <div className="flex flex-col md:flex-row gap-4 mb-3">
+                  {ann.image && (
+                    <div className="w-full md:w-32 h-32 rounded-xl overflow-hidden border border-slate-200 shrink-0 shadow-sm">
+                       <img src={ann.image} alt={ann.title} className="w-full h-full object-cover" />
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <p className="text-sm text-slate-600 mb-3">{ann.content}</p>
+                    <div className="flex flex-wrap items-center gap-y-2 gap-x-4 text-[10px] uppercase font-black text-slate-400 tracking-wider">
+                      <div className="flex items-center gap-1.5 bg-white px-2 py-1 rounded-md border border-slate-100 italic">
+                        <Clock size={12} className="text-indigo-400" />
+                        {new Date(ann.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} {new Date(ann.date).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                      <div className="flex items-center gap-1.5 bg-white px-2 py-1 rounded-md border border-slate-100">
+                        <Calendar size={12} className="text-amber-500" />
+                        Aktif: {ann.startDate ? new Date(ann.startDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : '-'} s/d {ann.endDate ? new Date(ann.endDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : '-'}
+                      </div>
+                      <span className="bg-indigo-100 text-indigo-700 px-2.5 py-1 rounded-md shadow-sm">
+                        {ann.targetRole ? `Role: ${ann.targetRole}` : ann.targetUserId ? `User ID: ${ann.targetUserId}` : 'Semua User'}
+                      </span>
+                    </div>
                   </div>
-                  <span className="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-md">
-                    {ann.targetRole ? `Role: ${ann.targetRole}` : ann.targetUserId ? `User ID: ${ann.targetUserId}` : 'Semua User'}
-                  </span>
                 </div>
               </div>
             ))

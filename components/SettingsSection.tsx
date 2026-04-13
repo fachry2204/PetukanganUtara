@@ -15,7 +15,11 @@ import {
   Settings as SettingsIcon,
   Calendar,
   MapPin,
-  Clock
+  Clock,
+  Smartphone,
+  QrCode,
+  MessageSquare,
+  Power
 } from 'lucide-react';
 import { SystemSettings } from '../types';
 import { apiService } from '../services/api';
@@ -27,25 +31,64 @@ interface SettingsSectionProps {
 
 const SettingsSection: React.FC<SettingsSectionProps> = ({ settings, onUpdate }) => {
   const [localSettings, setLocalSettings] = useState<SystemSettings>(settings);
+  const [isDirty, setIsDirty] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
-  const [activeTab, setActiveTab] = useState<'UMUM' | 'JADWAL'>('UMUM');
+  const [activeTab, setActiveTab] = useState<'UMUM' | 'JADWAL' | 'WA_GATEWAY'>('UMUM');
+  const [isWaLoading, setIsWaLoading] = useState(false);
+  
+  // WA Gateway State
+  const [waStatus, setWaStatus] = useState<{status: string, qrCode: string | null}>({ status: 'DISCONNECTED', qrCode: null });
 
+  // Sync localSettings with settings prop ONLY if the user hasn't made changes yet (not dirty)
   useEffect(() => {
-    setLocalSettings(settings);
-  }, [settings]);
+    if (!isDirty) {
+      setLocalSettings(settings);
+    }
+  }, [settings, isDirty]);
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // WA Polling Effect
+  useEffect(() => {
+    let interval: any;
+    if (activeTab === 'WA_GATEWAY') {
+      const fetchStatus = async () => {
+        const res = await apiService.getWaStatus();
+        if (res) setWaStatus(res);
+      };
+      fetchStatus();
+      interval = setInterval(fetchStatus, 3000);
+    }
+    return () => clearInterval(interval);
+  }, [activeTab]);
+
+  const handleSave = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     try {
         await apiService.updateSettings(localSettings);
         onUpdate(localSettings);
+        setIsDirty(false); // Reset dirty flag after successful save
         setIsSaved(true);
-        alert("Pengaturan sistem berhasil disimpan ke database!");
+        alert("📊 Pengaturan sistem berhasil disimpan ke database!");
         setTimeout(() => setIsSaved(false), 3000);
     } catch (error) {
         console.error("Failed to save settings:", error);
-        alert("Gagal menyimpan pengaturan ke database.");
+        alert("❌ Gagal menyimpan pengaturan ke database.");
     }
+  };
+   
+  const handleDisconnect = async () => {
+    if (window.confirm("Apakah Anda yakin ingin memutuskan koneksi WhatsApp? Sesi akan dihapus.")) {
+       try {
+           await apiService.logoutWa();
+           alert("WhatsApp berhasil diputuskan.");
+       } catch (err) {
+           alert("Gagal memutuskan koneksi.");
+       }
+    }
+  };
+
+  const handleChange = (updater: (prev: SystemSettings) => SystemSettings) => {
+    setLocalSettings(updater);
+    setIsDirty(true);
   };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -57,7 +100,7 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ settings, onUpdate })
       }
       const reader = new FileReader();
       reader.onloadend = () => {
-        setLocalSettings(prev => ({ ...prev, logo: reader.result as string }));
+        handleChange(prev => ({ ...prev, logo: reader.result as string }));
       };
       reader.readAsDataURL(file);
     }
@@ -72,7 +115,7 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ settings, onUpdate })
       }
       const reader = new FileReader();
       reader.onloadend = () => {
-        setLocalSettings(prev => ({ ...prev, loginBackground: reader.result as string }));
+        handleChange(prev => ({ ...prev, loginBackground: reader.result as string }));
       };
       reader.readAsDataURL(file);
     }
@@ -83,32 +126,46 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ settings, onUpdate })
       <div className="max-w-6xl mx-auto w-full">
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
           <div>
-            <h2 className="text-xl font-bold text-slate-800 tracking-tight">Pengaturan Sistem</h2>
+            <h2 className="text-xl font-bold text-slate-800 tracking-tight text-indigo-600">
+               {isDirty && <span className="mr-2 inline-block w-2 h-2 rounded-full bg-amber-500 animate-pulse" />}
+               Pengaturan Sistem {isDirty && <span className="text-[10px] font-bold text-amber-500 bg-amber-50 px-2 py-0.5 rounded-lg ml-2 uppercase">Unsaved</span>}
+            </h2>
             <p className="text-slate-500 text-[11px] font-medium">Konfigurasi parameter identitas dan operasional aplikasi.</p>
           </div>
           
-          <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-2xl border border-slate-200 shadow-inner">
-             <button 
-               onClick={() => setActiveTab('UMUM')}
-               className={`flex items-center gap-2 px-5 py-2 rounded-xl text-[10px] font-bold transition-all
-                 ${activeTab === 'UMUM' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-             >
-                <SettingsIcon size={14} /> UMUM
-             </button>
-             <button 
-               onClick={() => setActiveTab('JADWAL')}
-               className={`flex items-center gap-2 px-5 py-2 rounded-xl text-[10px] font-bold transition-all
-                 ${activeTab === 'JADWAL' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-             >
-                <Calendar size={14} /> JADWAL PPSU
-             </button>
+          <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl border border-slate-200 shadow-inner">
+                 <button 
+                   type="button"
+                   onClick={() => setActiveTab('UMUM')}
+                   className={`flex items-center gap-2 px-5 py-2 rounded-xl text-[10px] font-bold transition-all
+                     ${activeTab === 'UMUM' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                 >
+                    <SettingsIcon size={14} /> UMUM
+                 </button>
+                 <button 
+                   type="button"
+                   onClick={() => setActiveTab('JADWAL')}
+                   className={`flex items-center gap-2 px-5 py-2 rounded-xl text-[10px] font-bold transition-all
+                     ${activeTab === 'JADWAL' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                 >
+                    <Calendar size={14} /> JADWAL
+                 </button>
+                 <button 
+                   type="button"
+                   onClick={() => setActiveTab('WA_GATEWAY')}
+                   className={`flex items-center gap-2 px-5 py-2 rounded-xl text-[10px] font-bold transition-all
+                     ${activeTab === 'WA_GATEWAY' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                 >
+                    <Smartphone size={14} /> WA GATEWAY
+                 </button>
+              </div>
           </div>
         </div>
 
-        <form onSubmit={handleSave} className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-          {activeTab === 'UMUM' ? (
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+          {activeTab === 'UMUM' && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {/* Left Column - General Info */}
               <div className="md:col-span-2 space-y-6">
                 <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-200">
                   <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-3">
@@ -123,7 +180,7 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ settings, onUpdate })
                       <input 
                         type="text" 
                         value={localSettings.systemName}
-                        onChange={(e) => setLocalSettings(prev => ({...prev, systemName: e.target.value}))}
+                        onChange={(e) => handleChange(prev => ({...prev, systemName: e.target.value}))}
                         className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none font-bold text-slate-700 shadow-inner transition-all focus:bg-white"
                       />
                     </div>
@@ -132,7 +189,7 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ settings, onUpdate })
                       <input 
                         type="text" 
                         value={localSettings.subName}
-                        onChange={(e) => setLocalSettings(prev => ({...prev, subName: e.target.value}))}
+                        onChange={(e) => handleChange(prev => ({...prev, subName: e.target.value}))}
                         className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none font-bold text-slate-700 shadow-inner transition-all focus:bg-white"
                       />
                     </div>
@@ -143,7 +200,7 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ settings, onUpdate })
                         <input 
                           type="text" 
                           value={localSettings.footerText}
-                          onChange={(e) => setLocalSettings(prev => ({...prev, footerText: e.target.value}))}
+                          onChange={(e) => handleChange(prev => ({...prev, footerText: e.target.value}))}
                           className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none font-bold text-slate-700 shadow-inner transition-all focus:bg-white"
                         />
                       </div>
@@ -152,11 +209,22 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ settings, onUpdate })
                         <input 
                           type="text" 
                           value={localSettings.appVersion}
-                          onChange={(e) => setLocalSettings(prev => ({...prev, appVersion: e.target.value}))}
+                          onChange={(e) => handleChange(prev => ({...prev, appVersion: e.target.value}))}
                           className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none text-center font-mono font-bold text-slate-700 shadow-inner"
                         />
                       </div>
                     </div>
+                  </div>
+
+                  <div className="mt-8 flex justify-end">
+                    <button 
+                      type="button"
+                      onClick={() => handleSave()}
+                      className={`flex items-center gap-2 px-8 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all ${isDirty ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-slate-100 text-slate-400'}`}
+                      disabled={!isDirty}
+                    >
+                       <Save size={18} /> {isDirty ? 'Simpan Pengaturan Umum' : 'Data Sudah Sesuai'}
+                    </button>
                   </div>
                 </div>
 
@@ -174,7 +242,7 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ settings, onUpdate })
                         <input 
                           type="color" 
                           value={localSettings.themeColor}
-                          onChange={(e) => setLocalSettings(prev => ({...prev, themeColor: e.target.value}))}
+                          onChange={(e) => handleChange(prev => ({...prev, themeColor: e.target.value}))}
                           className="w-16 h-16 rounded-2xl cursor-pointer border-4 border-white shadow-md p-1 bg-slate-100"
                         />
                         <span className="font-mono font-black text-slate-500 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 shadow-inner">
@@ -182,21 +250,10 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ settings, onUpdate })
                         </span>
                       </div>
                     </div>
-                    <div className="flex-1 p-6 bg-slate-50 rounded-3xl border border-slate-200 shadow-inner">
-                       <p className="text-[10px] font-black text-slate-400 mb-3 uppercase tracking-widest pl-1">Preview Elemen</p>
-                       <button 
-                          type="button"
-                          style={{ backgroundColor: localSettings.themeColor }}
-                          className="px-6 py-3 text-white text-xs font-black rounded-xl shadow-lg ring-4 ring-white transition-transform active:scale-95 uppercase tracking-widest"
-                       >
-                          Simpan Data
-                       </button>
-                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Right Column - Images */}
               <div className="space-y-6">
                 <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-200">
                   <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-3">
@@ -215,11 +272,6 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ settings, onUpdate })
                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Logo Belum Ada</p>
                           </div>
                         )}
-                        <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
-                           <p className="text-white text-xs font-black uppercase tracking-widest flex items-center gap-2">
-                              <UploadCloud size={16} /> Upload New
-                           </p>
-                        </div>
                         <input type="file" accept="image/*" onChange={handleLogoUpload} className="absolute inset-0 cursor-pointer opacity-0" />
                      </div>
                   </div>
@@ -242,25 +294,16 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ settings, onUpdate })
                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Default</p>
                           </div>
                         )}
-                        <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
-                            <UploadCloud size={20} className="text-white" />
-                        </div>
                         <input type="file" accept="image/*" onChange={handleBackgroundUpload} className="absolute inset-0 cursor-pointer opacity-0" />
                      </div>
                   </div>
                 </div>
-                
-                <button 
-                  type="submit"
-                  className="w-full py-4 bg-slate-900 hover:bg-black text-white text-sm font-bold rounded-2xl shadow-xl shadow-slate-200 transition-all flex items-center justify-center gap-2 active:scale-95"
-                >
-                  <Save size={18} /> SIMPAN SEMUA
-                </button>
               </div>
             </div>
-          ) : (
+          )}
+
+          {activeTab === 'JADWAL' && (
             <div className="space-y-8 animate-in zoom-in-95 duration-500">
-               {/* TAB JADWAL content */}
                <div className="bg-white p-10 rounded-[2.5rem] shadow-sm border border-slate-200">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 border-b border-slate-100 pb-6">
                     <div className="flex items-center gap-4">
@@ -272,16 +315,9 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ settings, onUpdate })
                           <p className="text-slate-500 text-xs font-medium">Atur list zona tugas dan konfigurasi jam kerja PPSU.</p>
                        </div>
                     </div>
-                    <button 
-                      type="submit"
-                      className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-xl shadow-indigo-100 transition-all flex items-center justify-center gap-2 active:scale-95"
-                    >
-                      <Save size={18} /> SIMPAN DATA JADWAL
-                    </button>
                   </div>
                   
                   <div className="flex flex-col gap-12">
-                     {/* Zona Tugas Management */}
                      <div className="space-y-6">
                         <div className="flex items-center justify-between px-2">
                            <div className="flex items-center gap-2">
@@ -290,7 +326,7 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ settings, onUpdate })
                            </div>
                            <button 
                              type="button" 
-                             onClick={() => setLocalSettings(prev => ({...prev, zonaList: [...(prev.zonaList || []), `Zona Baru ${ (prev.zonaList?.length || 0) + 1}`]}))}
+                             onClick={() => handleChange(prev => ({...prev, zonaList: [...(prev.zonaList || []), `Zona Baru ${ (prev.zonaList?.length || 0) + 1}`]}))}
                              className="text-[9px] bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg font-bold uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
                            >
                               + Tambah Zona
@@ -306,13 +342,13 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ settings, onUpdate })
                                    onChange={(e) => {
                                       const newList = [...(localSettings.zonaList || [])];
                                       newList[idx] = e.target.value;
-                                      setLocalSettings(prev => ({...prev, zonaList: newList}));
+                                      handleChange(prev => ({...prev, zonaList: newList}));
                                    }}
                                    className="flex-1 p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl text-sm font-bold text-slate-700 focus:border-indigo-500 focus:bg-white outline-none transition-all shadow-inner"
                                  />
                                  <button 
                                    type="button" 
-                                   onClick={() => setLocalSettings(prev => ({...prev, zonaList: prev.zonaList?.filter((_, i) => i !== idx)}))}
+                                   onClick={() => handleChange(prev => ({...prev, zonaList: prev.zonaList?.filter((_, i) => i !== idx)}))}
                                    className="p-3 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all opacity-0 group-hover:opacity-100"
                                  >
                                     <Trash2 size={20} />
@@ -324,7 +360,6 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ settings, onUpdate })
 
                      <div className="h-px bg-gradient-to-r from-transparent via-slate-100 to-transparent w-full"></div>
 
-                     {/* Shift Config Management */}
                      <div className="space-y-6">
                         <div className="flex items-center justify-between px-2">
                            <div className="flex items-center gap-2">
@@ -333,7 +368,7 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ settings, onUpdate })
                            </div>
                            <button 
                              type="button" 
-                             onClick={() => setLocalSettings(prev => ({...prev, shiftConfig: [...(prev.shiftConfig || []), { name: 'New Shift', start: '08:00', end: '16:00' }]}))}
+                             onClick={() => handleChange(prev => ({...prev, shiftConfig: [...(prev.shiftConfig || []), { name: 'New Shift', start: '08:00', end: '16:00' }]}))}
                              className="text-[9px] bg-cyan-50 text-cyan-600 px-3 py-1.5 rounded-lg font-bold uppercase tracking-widest hover:bg-cyan-600 hover:text-white transition-all shadow-sm"
                            >
                               + Tambah Shift
@@ -344,7 +379,7 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ settings, onUpdate })
                               <div key={idx} className="p-6 bg-slate-50 border-2 border-slate-100 rounded-3xl space-y-4 relative group shadow-inner">
                                  <button 
                                    type="button" 
-                                   onClick={() => setLocalSettings(prev => ({...prev, shiftConfig: prev.shiftConfig?.filter((_, i) => i !== idx)}))}
+                                   onClick={() => handleChange(prev => ({...prev, shiftConfig: prev.shiftConfig?.filter((_, i) => i !== idx)}))}
                                    className="absolute top-4 right-4 p-2 text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all rounded-lg"
                                  >
                                     <Trash2 size={16} />
@@ -357,7 +392,7 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ settings, onUpdate })
                                       onChange={(e) => {
                                          const newList = [...(localSettings.shiftConfig || [])];
                                          newList[idx] = { ...newList[idx], name: e.target.value };
-                                         setLocalSettings(prev => ({...prev, shiftConfig: newList}));
+                                         handleChange(prev => ({...prev, shiftConfig: newList}));
                                       }}
                                       className="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm font-black uppercase outline-none shadow-sm focus:border-cyan-400"
                                     />
@@ -371,7 +406,7 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ settings, onUpdate })
                                          onChange={(e) => {
                                             const newList = [...(localSettings.shiftConfig || [])];
                                             newList[idx] = { ...newList[idx], start: e.target.value };
-                                            setLocalSettings(prev => ({...prev, shiftConfig: newList}));
+                                            handleChange(prev => ({...prev, shiftConfig: newList}));
                                          }}
                                          className="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm font-bold outline-none shadow-sm"
                                        />
@@ -384,7 +419,7 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ settings, onUpdate })
                                          onChange={(e) => {
                                             const newList = [...(localSettings.shiftConfig || [])];
                                             newList[idx] = { ...newList[idx], end: e.target.value };
-                                            setLocalSettings(prev => ({...prev, shiftConfig: newList}));
+                                            handleChange(prev => ({...prev, shiftConfig: newList}));
                                          }}
                                          className="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm font-bold outline-none shadow-sm"
                                        />
@@ -394,11 +429,179 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ settings, onUpdate })
                            ))}
                         </div>
                      </div>
+
+                      <div className="mt-4 flex justify-end">
+                        <button 
+                          type="button"
+                          onClick={() => handleSave()}
+                          className={`flex items-center gap-2 px-8 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all ${isDirty ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-100' : 'bg-slate-100 text-slate-400'}`}
+                        >
+                           <Save size={18} /> {isDirty ? 'Simpan Konfigurasi Jadwal' : 'Jadwal Sesuai'}
+                        </button>
+                      </div>
                   </div>
                </div>
             </div>
           )}
-        </form>
+
+          {activeTab === 'WA_GATEWAY' && (
+            <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="bg-slate-50 rounded-[2.5rem] p-8 border border-slate-100 flex flex-col items-center justify-center text-center gap-6">
+                     <div className="relative">
+                        <div className={`w-24 h-24 rounded-3xl flex items-center justify-center shadow-lg transition-all ${waStatus.status === 'CONNECTED' ? 'bg-emerald-500 text-white' : 'bg-white text-slate-400'}`}>
+                           <Smartphone size={48} />
+                        </div>
+                        <div className={`absolute -bottom-2 -right-2 w-8 h-8 rounded-full border-4 border-slate-50 flex items-center justify-center ${waStatus.status === 'CONNECTED' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
+                           {waStatus.status === 'CONNECTED' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} /> }
+                        </div>
+                     </div>
+                     
+                     <div>
+                        <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight">Status WhatsApp</h3>
+                        <p className={`text-xs font-black uppercase tracking-widest mt-1 ${waStatus.status === 'CONNECTED' ? 'text-emerald-500' : 'text-slate-400'}`}>
+                           {waStatus.status === 'CONNECTED' ? 'TERKONEKSI' : waStatus.status === 'QR_READY' ? 'MENUNGGU SCAN' : 'TERPUTUS'}
+                        </p>
+                     </div>
+
+                     {waStatus.qrCode && (
+                        <div className="space-y-4 flex flex-col items-center">
+                           <div className="bg-white p-4 rounded-3xl shadow-xl border border-slate-100 animate-in zoom-in-95">
+                              <img src={waStatus.qrCode} alt="WhatsApp QR" className="w-48 h-48" />
+                              <p className="text-[10px] font-bold text-slate-400 mt-2 flex items-center justify-center gap-2">
+                                 <QrCode size={12} /> Scan QR dengan WhatsApp Anda
+                              </p>
+                           </div>
+                           <button 
+                             type="button"
+                             onClick={() => apiService.initWa(true)}
+                             className="text-[10px] font-black text-rose-500 bg-rose-50 px-4 py-2 rounded-xl hover:bg-rose-100 transition-all flex items-center gap-2"
+                           >
+                              <RefreshCw size={12} /> ULANG QR CODE
+                           </button>
+                        </div>
+                     )}
+
+                     {!waStatus.qrCode && waStatus.status !== 'CONNECTED' && (
+                        <button 
+                           type="button"
+                           disabled={isWaLoading}
+                           onClick={async () => {
+                              setIsWaLoading(true);
+                              try {
+                                 await apiService.initWa(true);
+                              } finally {
+                                 setTimeout(() => setIsWaLoading(false), 5000); // Biarkan polling yang ambil alih setelah 5 detik
+                              }
+                           }}
+                           className={`flex items-center gap-2 bg-indigo-600 hover:bg-slate-900 text-white px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-indigo-100 transition-all ${isWaLoading ? 'opacity-50 cursor-wait' : ''}`}
+                        >
+                           <RefreshCw size={16} className={isWaLoading ? 'animate-spin' : ''} /> 
+                           {isWaLoading ? 'SEDANG MENYIAPKAN...' : 'HUBUNGKAN WA'}
+                        </button>
+                     )}
+
+                     {waStatus.status === 'CONNECTED' && (
+                        <button 
+                           type="button"
+                           onClick={handleDisconnect}
+                           className="flex items-center gap-2 bg-rose-50 hover:bg-rose-100 text-rose-600 px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-[0.2em] border border-rose-100 transition-all"
+                        >
+                           <Power size={16} /> DISCONNECT
+                        </button>
+                     )}
+                  </div>
+
+                  <div className="space-y-6">
+                     <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                        <h4 className="text-sm font-black text-slate-800 uppercase tracking-[0.2em] mb-6 flex items-center gap-3">
+                           <MessageSquare size={18} className="text-indigo-500" /> Pengaturan Notifikasi
+                        </h4>
+                        
+                        <div className="space-y-4">
+                           <div className="space-y-1.5 mb-6">
+                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1">Nomor WA Admin / Laporan</label>
+                              <input 
+                                 type="text" 
+                                 placeholder="Contoh: 08123456789 atau 6281234..."
+                                 value={localSettings.waGatewayConfig?.adminPhone || ''}
+                                 onChange={(e) => {
+                                    const config = { ...localSettings.waGatewayConfig, adminPhone: e.target.value } as any;
+                                    handleChange(prev => ({...prev, waGatewayConfig: config}));
+                                 }}
+                                 className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700 text-sm shadow-inner"
+                              />
+                               <p className="text-[9px] text-slate-400 font-bold mt-1 pl-1">Sistem akan mengirimkan laporan absensi & SOS ke nomor ini.</p>
+                           </div>
+
+                           <div className="space-y-1.5 mb-6">
+                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1">Delay Antar Pesan (detik)</label>
+                              <input 
+                                 type="number" 
+                                 min="1"
+                                 placeholder="Contoh: 3"
+                                 value={localSettings.waGatewayConfig?.messageDelay || 0}
+                                 onChange={(e) => {
+                                    const config = { ...localSettings.waGatewayConfig, messageDelay: parseInt(e.target.value) || 0 } as any;
+                                    handleChange(prev => ({...prev, waGatewayConfig: config}));
+                                 }}
+                                 className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700 text-sm shadow-inner"
+                              />
+                               <p className="text-[9px] text-slate-400 font-bold mt-1 pl-1">Jeda waktu antar pengiriman pesan untuk menghindari blokir (SPAM).</p>
+                           </div>
+
+                           {[
+                              { id: 'enableAnnouncements', label: 'Notifikasi Pengumuman', desc: 'Kirim otomatis ke grup/personil saat pengumuman dibuat.' },
+                              { id: 'enableAttendance', label: 'Notifikasi Absensi', desc: 'Teruskan laporan masuk/pulang personil ke WA Pimpinan.' },
+                              { id: 'enableTasks', label: 'Notifikasi Penugasan', desc: 'Kirim info tugas baru langsung ke WA Anggota terkait.' }
+                           ].map(item => (
+                              <div key={item.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl group hover:bg-indigo-50/50 transition-all border border-transparent hover:border-indigo-100">
+                                 <div>
+                                    <p className="text-xs font-black text-slate-700 uppercase tracking-tight">{item.label}</p>
+                                    <p className="text-[10px] font-bold text-slate-400 mt-0.5">{item.desc}</p>
+                                 </div>
+                                 <button
+                                    type="button"
+                                    onClick={() => {
+                                       const config = { ...localSettings.waGatewayConfig } as any;
+                                       config[item.id] = !config[item.id];
+                                       handleChange(prev => ({...prev, waGatewayConfig: config}));
+                                    }}
+                                    className={`w-12 h-6 rounded-full relative transition-all ${localSettings.waGatewayConfig?.[item.id as keyof typeof localSettings.waGatewayConfig] ? 'bg-indigo-600' : 'bg-slate-200'}`}
+                                 >
+                                    <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${localSettings.waGatewayConfig?.[item.id as keyof typeof localSettings.waGatewayConfig] ? 'left-7' : 'left-1'}`} />
+                                 </button>
+                              </div>
+                           ))}
+
+                            <div className="pt-4">
+                              <button 
+                                type="button"
+                                onClick={() => handleSave()}
+                                className={`w-full flex items-center justify-center gap-2 px-8 py-4 rounded-2xl text-xs font-black uppercase tracking-widest transition-all ${isDirty ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-100' : 'bg-slate-100 text-slate-400'}`}
+                              >
+                                <Save size={20} /> {isDirty ? 'Simpan Pengaturan WhatsApp' : 'Statistik WA Sesuai'}
+                              </button>
+                            </div>
+                         </div>
+                      </div>
+
+                      <div className="bg-amber-50 rounded-3xl p-6 border border-amber-100">
+                        <div className="flex gap-3">
+                           <AlertTriangle className="text-amber-500 shrink-0" size={20} />
+                           <div>
+                              <p className="text-xs font-black text-amber-700 uppercase tracking-tight">Penting</p>
+                              <p className="text-[10px] font-bold text-amber-600 mt-1 leading-relaxed">
+                                 Pastikan koneksi internet stabil saat proses scan QR. Sistem ini menggunakan teknologi WEB Bridge, pastikan perangkat tetap terhubung di background.
+                              </p>
+                           </div>
+                        </div>
+                      </div>
+                  </div>
+               </div>
+            </div>
+          )}
+        </div>
 
         <div className="mt-12 pt-8 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-3">

@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS staff (
   nama_lengkap VARCHAR(255),
   jenis_kelamin VARCHAR(50),
   status VARCHAR(50),
-  foto_profile TEXT,
+  foto_profile LONGTEXT,
   alamat_lengkap TEXT,
   nomor_whatsapp VARCHAR(50),
   latitude DOUBLE,
@@ -24,8 +24,9 @@ CREATE TABLE IF NOT EXISTS tugas_ppsu (
   longitude DOUBLE,
   status VARCHAR(50),
   timestamp DATETIME,
-  foto_sebelum TEXT,
-  foto_sesudah TEXT,
+  foto_sebelum LONGTEXT,
+  foto_sedang LONGTEXT,
+  foto_sesudah LONGTEXT,
   staff_id VARCHAR(50),
   assigned_staff_ids JSON,
   priority VARCHAR(50),
@@ -35,9 +36,9 @@ CREATE TABLE IF NOT EXISTS tugas_ppsu (
   reporter_nik VARCHAR(50),
   reporter_phone VARCHAR(50),
   ticket_number VARCHAR(100),
-  photo_arrival TEXT,
-  photo_completion TEXT,
-  photo_revision TEXT,
+  photo_arrival LONGTEXT,
+  photo_completion LONGTEXT,
+  photo_revision LONGTEXT,
   estimation_time VARCHAR(100),
   gps_arrival JSON
 );
@@ -49,7 +50,7 @@ CREATE TABLE IF NOT EXISTS users (
   email VARCHAR(255),
   nik VARCHAR(50),
   role VARCHAR(100),
-  avatar TEXT,
+  avatar LONGTEXT,
   password VARCHAR(255)
 );
 
@@ -60,7 +61,7 @@ CREATE TABLE IF NOT EXISTS attendance (
   timestamp DATETIME,
   latitude DOUBLE,
   longitude DOUBLE,
-  photo_url TEXT,
+  photo_url LONGTEXT,
   nik VARCHAR(50),
   staff_name VARCHAR(255)
 );
@@ -95,9 +96,9 @@ CREATE TABLE IF NOT EXISTS settings (
   footer_text TEXT,
   app_version VARCHAR(50),
   theme_color VARCHAR(50),
-  logo TEXT,
-  login_background TEXT,
-  anjungan_background TEXT,
+  logo LONGTEXT,
+  login_background LONGTEXT,
+  anjungan_background LONGTEXT,
   zona_list JSON,
   shift_config JSON
 );

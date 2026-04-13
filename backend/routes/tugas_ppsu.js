@@ -66,6 +66,29 @@ router.post('/', async (req, res) => {
             t.id, t.judulTugas, t.deskripsi, t.kategori, t.lokasi, t.latitude, t.longitude, t.status, t.timestamp, t.fotoSebelum, t.fotoSedang, t.fotoSesudah, t.priority, JSON.stringify(t.logs || []), t.reporterName, t.reporterNik
         ]);
         
+        // WA NOTIFICATION LOGIC
+        try {
+            const [settingsRows] = await db.query('SELECT wa_gateway_config FROM settings WHERE id = "app_settings"');
+            const config = JSON.parse(settingsRows[0]?.wa_gateway_config || '{}');
+            
+            if (config.enableTasks) {
+                const waService = require('../services/whatsappService');
+                const [staffRows] = await db.query('SELECT nomor_whatsapp FROM staff WHERE nik = ?', [t.reporterNik]);
+                const staffPhone = staffRows[0]?.nomor_whatsapp;
+
+                if (staffPhone) {
+                    const message = `🛠️ *LAPORAN TUGAS BARU*\n\nHalo *${t.reporterName}*,\n\nTugas Anda: *${t.judulTugas}* telah dibuat.\n\n*Kategori:* ${t.kategori}\n*Lokasi:* ${t.lokasi}\n*Status:* ${t.status}\n\nTetap semangat bertugas!`;
+                    if (t.fotoSebelum) {
+                        await waService.sendMessageWithMedia(staffPhone, message, t.fotoSebelum);
+                    } else {
+                        await waService.sendMessage(staffPhone, message);
+                    }
+                }
+            }
+        } catch (waErr) {
+            console.error('Failed to send Task WA:', waErr);
+        }
+
         cache.del('all_tugas_ppsu');
         res.status(201).json(t); // Return object directly
     } catch (err) {
@@ -90,6 +113,45 @@ router.put('/:id', async (req, res) => {
             t.alasanPenolakan, t.staffId, t.priority, id
         ]);
         
+        // WA NOTIFICATION LOGIC FOR UPDATES
+        try {
+            const [settingsRows] = await db.query('SELECT wa_gateway_config FROM settings WHERE id = "app_settings"');
+            const config = JSON.parse(settingsRows[0]?.wa_gateway_config || '{}');
+            
+            if (config.enableTasks) {
+                const waService = require('../services/whatsappService');
+                const [staffRows] = await db.query('SELECT nomor_whatsapp FROM staff WHERE nik = ?', [t.reporterNik]);
+                const staffPhone = staffRows[0]?.nomor_whatsapp;
+
+                if (staffPhone) {
+                    let photoToSend = null;
+                    let stageText = "Update";
+
+                    // Determine which photo is "newest" or most relevant for the update
+                    if (t.fotoSesudah) {
+                        photoToSend = t.fotoSesudah;
+                        stageText = "Selesai Tugas (Setelah)";
+                    } else if (t.fotoSedang) {
+                        photoToSend = t.fotoSedang;
+                        stageText = "Sedang Dikerjakan";
+                    } else if (t.fotoSebelum) {
+                        photoToSend = t.fotoSebelum;
+                        stageText = "Persiapan (Sebelum)";
+                    }
+
+                    const message = `📝 *UPDATE STATUS TUGAS*\n\nHalo *${t.reporterName}*,\n\nTugas: *${t.judulTugas}*\nStatus: *${t.status}*\nTahap: *${stageText}*\n\nTerima kasih atas laporannya.`;
+                    
+                    if (photoToSend) {
+                        await waService.sendMessageWithMedia(staffPhone, message, photoToSend);
+                    } else {
+                        await waService.sendMessage(staffPhone, message);
+                    }
+                }
+            }
+        } catch (waErr) {
+            console.error('Failed to send Task Update WA:', waErr);
+        }
+
         cache.del('all_tugas_ppsu');
         res.json({ message: 'Tugas PPSU updated', data: t });
     } catch (err) {

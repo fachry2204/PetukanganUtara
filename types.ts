@@ -108,6 +108,13 @@ export interface SystemSettings {
   anjunganBackground?: string | null;
   zonaList?: string[];
   shiftConfig?: { name: string; start: string; end: string; }[];
+  waGatewayConfig?: {
+    enableAnnouncements: boolean;
+    enableAttendance: boolean;
+    enableTasks: boolean;
+    adminPhone?: string;
+    messageDelay?: number;
+  };
 }
 
 export interface Announcement {
@@ -115,9 +122,14 @@ export interface Announcement {
   title: string;
   content: string;
   date: string;
+  startDate?: string;
+  endDate?: string;
   authorName: string;
+  authorRole?: string;
   targetRole?: Role | 'ALL';
   targetUserId?: string;
+  priority?: 'LOW' | 'MEDIUM' | 'HIGH';
+  image?: string;
 }
 
 export type AttendanceType = 'Absen Masuk' | 'Istirahat' | 'Selesai Istirahat' | 'Absen Pulang';

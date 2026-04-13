@@ -28,6 +28,12 @@ const ScheduleManagementSection: React.FC<ScheduleManagementSectionProps> = ({ s
   const [isAdding, setIsAdding] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [dayFilter, setDayFilter] = useState('ALL');
+  const [zonaFilter, setZonaFilter] = useState('ALL');
+  const [shiftFilter, setShiftFilter] = useState('ALL');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
+  const [currentMonth, setCurrentMonth] = useState(new Date());
 
   const ZONAS = settings.zonaList || ['Zona Belum Diatur'];
   const SHIFTS = settings.shiftConfig || [
@@ -39,7 +45,8 @@ const ScheduleManagementSection: React.FC<ScheduleManagementSectionProps> = ({ s
   // Form State
   const [newJadwal, setNewJadwal] = useState({
     staffId: '',
-    day: 'Senin',
+    date: new Date().toISOString().split('T')[0],
+    day: DAYS[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1],
     shift: SHIFTS[0].name,
     startTime: SHIFTS[0].start,
     endTime: SHIFTS[0].end,
@@ -78,7 +85,8 @@ const ScheduleManagementSection: React.FC<ScheduleManagementSectionProps> = ({ s
       setIsAdding(false);
       setNewJadwal({
         staffId: '',
-        day: 'Senin',
+        date: new Date().toISOString().split('T')[0],
+        day: DAYS[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1],
         shift: SHIFTS[0].name,
         startTime: SHIFTS[0].start,
         endTime: SHIFTS[0].end,
@@ -101,10 +109,16 @@ const ScheduleManagementSection: React.FC<ScheduleManagementSectionProps> = ({ s
   };
 
   const filteredSchedules = schedules.filter(j => {
-    const matchesSearch = j.nama_lengkap.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          j.area.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesDay = dayFilter === 'ALL' || j.day === dayFilter;
-    return matchesSearch && matchesDay;
+    const matchesSearch = (j.nama_lengkap || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          (j.area || '').toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesDay = dayFilter === 'ALL' || j.day === dayFilter || j.date === dayFilter;
+    const matchesZona = zonaFilter === 'ALL' || j.area === zonaFilter;
+    const matchesShift = shiftFilter === 'ALL' || j.shift === shiftFilter;
+    
+    const taskDate = j.date || (j.timestamp ? new Date(j.timestamp).toISOString().split('T')[0] : '');
+    const matchesDateRange = (!startDate || taskDate >= startDate) && (!endDate || taskDate <= endDate);
+
+    return matchesSearch && matchesDay && matchesZona && matchesShift && matchesDateRange;
   });
 
   return (
@@ -114,12 +128,15 @@ const ScheduleManagementSection: React.FC<ScheduleManagementSectionProps> = ({ s
           <h2 className="text-2xl font-black text-slate-800 tracking-tight">Manajemen Jadwal PPSU</h2>
           <p className="text-slate-500 text-sm font-medium">Atur shift dan zona penugasan personil PPSU secara efisien.</p>
         </div>
-        <button 
-          onClick={() => setIsAdding(true)}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-indigo-100 transition-all active:scale-95"
-        >
-          <Plus size={20} /> Tambah Jadwal Baru
-        </button>
+        <div className="flex gap-2">
+          {/* View Tab Removed as requested */}
+          <button 
+            onClick={() => setIsAdding(true)}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-indigo-100 transition-all active:scale-95"
+          >
+            <Plus size={20} /> Tambah Jadwal Baru
+          </button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -139,7 +156,7 @@ const ScheduleManagementSection: React.FC<ScheduleManagementSectionProps> = ({ s
              </div>
              <div>
                 <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Aktif Hari Ini</p>
-                <h3 className="text-xl font-black text-slate-800">{schedules.filter(s => s.day === DAYS[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1]).length}</h3>
+                <h3 className="text-xl font-black text-slate-800">{schedules.filter(s => s.date === new Date().toISOString().split('T')[0]).length}</h3>
              </div>
           </div>
           <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex items-center gap-4">
@@ -154,89 +171,154 @@ const ScheduleManagementSection: React.FC<ScheduleManagementSectionProps> = ({ s
       </div>
 
       {/* Filters & Search */}
-      <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 flex flex-wrap gap-4 items-center">
-        <div className="flex-1 min-w-[200px] relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-          <input 
-            type="text" 
-            placeholder="Cari nama personil atau zona..."
-            className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+      <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex flex-wrap gap-4 items-center">
+        <div className="flex-1 min-w-[200px]">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+            <input 
+              type="text" 
+              placeholder="Nama personil atau zona..."
+              className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-sm"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-           <Filter size={18} className="text-slate-400" />
-           <select 
-             className="bg-slate-50 border border-slate-200 p-3 rounded-2xl outline-none font-bold text-slate-700 text-sm"
-             value={dayFilter}
-             onChange={(e) => setDayFilter(e.target.value)}
-           >
-              <option value="ALL">Semua Hari</option>
-              {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
-           </select>
+
+        <div>
+          <select 
+            className="bg-slate-50 border border-slate-200 p-3 rounded-2xl outline-none font-bold text-slate-700 text-sm min-w-[120px]"
+            value={dayFilter}
+            onChange={(e) => setDayFilter(e.target.value)}
+          >
+            <option value="ALL">Semua Hari</option>
+            {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
+          </select>
         </div>
+
+        <div>
+          <select 
+            className="bg-slate-50 border border-slate-200 p-3 rounded-2xl outline-none font-bold text-slate-700 text-sm min-w-[140px]"
+            value={zonaFilter}
+            onChange={(e) => setZonaFilter(e.target.value)}
+          >
+            <option value="ALL">Semua Zona</option>
+            {ZONAS.map(z => <option key={z} value={z}>{z}</option>)}
+          </select>
+        </div>
+
+        <div>
+          <select 
+            className="bg-slate-50 border border-slate-200 p-3 rounded-2xl outline-none font-bold text-slate-700 text-sm min-w-[120px]"
+            value={shiftFilter}
+            onChange={(e) => setShiftFilter(e.target.value)}
+          >
+            <option value="ALL">Semua Shift</option>
+            {SHIFTS.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
+          </select>
+        </div>
+
+        <div>
+          <div className="flex items-center gap-2">
+            <input 
+              type="date" 
+              className="bg-slate-50 border border-slate-200 p-3 rounded-2xl outline-none font-bold text-slate-700 text-sm"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+            <span className="text-slate-300 font-bold">-</span>
+            <input 
+              type="date" 
+              className="bg-slate-50 border border-slate-200 p-3 rounded-2xl outline-none font-bold text-slate-700 text-sm"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
+          </div>
+        </div>
+
+        {(zonaFilter !== 'ALL' || shiftFilter !== 'ALL' || dayFilter !== 'ALL' || startDate || endDate || searchQuery) && (
+          <button 
+            onClick={() => {
+              setZonaFilter('ALL');
+              setShiftFilter('ALL');
+              setDayFilter('ALL');
+              setStartDate('');
+              setEndDate('');
+              setSearchQuery('');
+            }}
+            className="p-3 bg-slate-100 hover:bg-rose-50 text-slate-400 hover:text-rose-500 rounded-2xl transition-all"
+            title="Reset Filter"
+          >
+            <Trash2 size={20} />
+          </button>
+        )}
       </div>
 
-      {/* Schedule List */}
+      {/* List View Only */}
       {isLoading ? (
         <div className="py-20 flex flex-col items-center justify-center gap-3">
            <div className="w-10 h-10 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
            <p className="text-slate-500 font-bold">Memuat Jadwal...</p>
         </div>
-      ) : filteredSchedules.length === 0 ? (
-        <div className="bg-white p-12 rounded-[2.5rem] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-center">
-           <Calendar size={48} className="text-slate-200 mb-4" />
-           <p className="text-slate-500 font-bold">Tidak ada jadwal ditemukan.</p>
-           <p className="text-slate-400 text-sm mt-1">Silahkan tambahkan jadwal baru untuk personil PPSU.</p>
-        </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-           {filteredSchedules.map(j => (
-             <div key={j.id} className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
-                <div className="flex justify-between items-start gap-4 mb-4">
-                   <div className="flex gap-4">
-                      <div className="w-14 h-14 bg-slate-50 rounded-2xl overflow-hidden border border-slate-100 flex items-center justify-center shrink-0">
-                         <User size={28} className="text-slate-300" />
-                      </div>
-                      <div>
-                         <h4 className="font-black text-slate-800 uppercase leading-tight">{j.nama_lengkap}</h4>
-                         <p className="text-[10px] font-mono text-slate-400 font-bold">{j.nomor_anggota}</p>
-                         <div className="flex items-center gap-2 mt-2">
-                           <span className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border border-indigo-100">{j.day}</span>
-                           <span className="bg-cyan-50 text-cyan-700 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border border-cyan-100">{j.shift}</span>
-                         </div>
-                      </div>
-                   </div>
-                   <button 
-                     onClick={() => handleDelete(j.id)}
-                     className="p-2.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
-                   >
-                     <Trash2 size={20} />
-                   </button>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 pb-2">
-                   <div className="bg-slate-50 p-3 rounded-2xl flex items-center gap-3">
-                      <Clock size={16} className="text-indigo-500" />
-                      <div>
-                        <p className="text-[8px] font-black text-slate-400 uppercase">Waktu Tugas</p>
-                        <p className="text-xs font-bold text-slate-700">{j.start_time.slice(0, 5)} - {j.end_time.slice(0, 5)}</p>
-                      </div>
-                   </div>
-                   <div className="bg-slate-50 p-3 rounded-2xl flex items-center gap-3">
-                      <MapPin size={16} className="text-orange-500" />
-                      <div className="min-w-0">
-                        <p className="text-[8px] font-black text-slate-400 uppercase">Zona Tugas</p>
-                        <p className="text-xs font-bold text-slate-700 truncate">{j.area}</p>
-                      </div>
-                   </div>
-                </div>
-                
-                <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-50 -mr-12 -mt-12 rounded-full opacity-0 group-hover:opacity-100 transition-opacity -z-10"></div>
+        filteredSchedules.length === 0 ? (
+          <div className="bg-white p-12 rounded-[2.5rem] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-center">
+             <Calendar size={48} className="text-slate-200 mb-4" />
+             <p className="text-slate-500 font-bold">Tidak ada jadwal ditemukan.</p>
+             <p className="text-slate-400 text-sm mt-1">Silahkan tambahkan jadwal baru untuk personil PPSU.</p>
+          </div>
+        ) : (
+          <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
+             <div className="overflow-x-auto custom-scrollbar">
+                <table className="w-full text-left text-sm border-collapse">
+                   <thead>
+                      <tr className="bg-slate-50 border-b border-slate-100 text-slate-400 uppercase text-[10px] font-black tracking-widest">
+                         <th className="py-4 px-4 text-center w-16">No</th>
+                         <th className="py-4 px-4">Nama Personil</th>
+                         <th className="py-4 px-4 text-center">Tanggal</th>
+                         <th className="py-4 px-4 text-center">Shift</th>
+                         <th className="py-4 px-4 text-center">Waktu Tugas</th>
+                         <th className="py-4 px-4 text-center">Zona</th>
+                         <th className="py-4 px-4 text-center">Aksi</th>
+                      </tr>
+                   </thead>
+                   <tbody className="divide-y divide-slate-50">
+                      {filteredSchedules.map((j, idx) => (
+                        <tr key={j.id} className="hover:bg-indigo-50/30 transition-colors group">
+                           <td className="py-4 px-4 text-center font-bold text-slate-300 group-hover:text-indigo-400">{idx + 1}</td>
+                           <td className="py-4 px-4">
+                              <p className="font-black text-slate-800 uppercase text-xs">{j.nama_lengkap}</p>
+                              <p className="text-[10px] font-bold font-mono text-slate-400">{j.nomor_anggota}</p>
+                           </td>
+                           <td className="py-4 px-4 text-center">
+                              <span className="bg-rose-50 text-rose-700 px-3 py-1 rounded-lg text-[10px] font-black border border-rose-100">
+                                 {j.date ? new Date(j.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : j.day}
+                              </span>
+                           </td>
+                           <td className="py-4 px-4 text-center">
+                              <span className="bg-cyan-50 text-cyan-700 px-3 py-1 rounded-lg text-[10px] font-black border border-cyan-100">{j.shift}</span>
+                           </td>
+                           <td className="py-4 px-4 text-center font-bold text-slate-600">
+                              {j.start_time.slice(0, 5)} - {j.end_time.slice(0, 5)}
+                           </td>
+                           <td className="py-4 px-4 text-center">
+                              <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">{j.area}</span>
+                           </td>
+                           <td className="py-4 px-4 text-center">
+                              <button 
+                                 onClick={() => handleDelete(j.id)}
+                                 className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
+                              >
+                                 <Trash2 size={18} />
+                              </button>
+                           </td>
+                        </tr>
+                      ))}
+                   </tbody>
+                </table>
              </div>
-           ))}
-        </div>
+          </div>
+        )
       )}
 
       {/* Add Modal */}
@@ -274,15 +356,19 @@ const ScheduleManagementSection: React.FC<ScheduleManagementSectionProps> = ({ s
 
                     <div className="space-y-2">
                        <label className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                         <Calendar size={14} /> Hari
+                         <Calendar size={14} /> Tanggal
                        </label>
-                       <select 
+                       <input 
+                         type="date"
                          className="w-full p-4 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700 text-sm shadow-sm"
-                         value={newJadwal.day}
-                         onChange={(e) => setNewJadwal({...newJadwal, day: e.target.value})}
-                       >
-                          {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
-                       </select>
+                         value={newJadwal.date}
+                         onChange={(e) => {
+                            const date = e.target.value;
+                            const dayName = DAYS[new Date(date).getDay() === 0 ? 6 : new Date(date).getDay() - 1];
+                            setNewJadwal({...newJadwal, date, day: dayName});
+                         }}
+                         required
+                       />
                     </div>
                  </div>
 

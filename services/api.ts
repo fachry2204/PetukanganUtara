@@ -71,6 +71,7 @@ export const apiService = {
     // --- ANNOUNCEMENTS ---
     getAnnouncements: (): Promise<any[]> => fetchData('/announcements'),
     createAnnouncement: (ann: any) => postData('/announcements', ann),
+    deleteAnnouncement: (id: string) => fetch(`${(import.meta as any).env.VITE_API_URL || 'http://localhost:5000/api'}/announcements/${id}`, { method: 'DELETE' }).then(r => r.json()),
 
     // --- SOS ---
     getSos: (): Promise<any[]> => fetchData('/sos'),
@@ -84,5 +85,19 @@ export const apiService = {
     // --- JADWAL ---
     getJadwal: (): Promise<any[]> => fetchData('/jadwal'),
     createJadwal: (jadwal: any) => postData('/jadwal', jadwal),
-    deleteJadwal: (id: string) => fetch(`${(import.meta as any).env.VITE_API_URL || 'http://localhost:5000/api'}/jadwal/${id}`, { method: 'DELETE' }).then(r => r.json())
+    deleteJadwal: (id: string) => fetch(`${(import.meta as any).env.VITE_API_URL || 'http://localhost:5000/api'}/jadwal/${id}`, { method: 'DELETE' }).then(r => r.json()),
+
+    // --- ATTENDANCE REQUESTS ---
+    getAttendanceRequests: (): Promise<any[]> => fetchData('/attendance-requests'),
+    getMyAttendanceRequests: (nik: string): Promise<any[]> => fetchData(`/attendance-requests/my/${nik}`),
+    createAttendanceRequest: (request: any) => postData('/attendance-requests', request),
+    updateAttendanceRequest: (id: number, data: any) => putData(`/attendance-requests/${id}`, data),
+
+    // --- WHATSAPP GATEWAY ---
+    getWaStatus: () => fetchData('/whatsapp/status'),
+    initWa: (force: boolean = false) => postData('/whatsapp/initialize', { force }),
+    logoutWa: () => postData('/whatsapp/logout', {}),
+    getWaLogs: (): Promise<any[]> => fetchData('/whatsapp-logs'),
+    retryWaMessage: (id: string) => postData(`/whatsapp-logs/retry/${id}`, {}),
+    clearWaLogs: () => fetch(`${(import.meta as any).env.VITE_API_URL || 'http://localhost:5000/api'}/whatsapp-logs`, { method: 'DELETE' }).then(r => r.json())
 };
