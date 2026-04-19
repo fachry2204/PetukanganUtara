@@ -6,9 +6,9 @@ require('dotenv').config(); // Fallback to current directory .env if root not en
 // Buat koneksi pool agar lebih efisien
 const pool = mysql.createPool({
   host: process.env.DB_HOST || '127.0.0.1',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'sipetut',
+  user: process.env.DB_USER || 'sipetut_db',
+  password: process.env.DB_PASSWORD || 'Bangbens220488!',
+  database: process.env.DB_NAME || 'sipetut_db',
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
