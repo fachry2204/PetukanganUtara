@@ -296,6 +296,7 @@ const App: React.FC = () => {
                 attendanceRecords={attendanceRecords} 
                 schedules={schedules}
                 staffList={staffList}
+                settings={settings}
                 onRecord={(rec) => setAttendanceRecords([rec, ...attendanceRecords])} 
               />
             } />
@@ -307,6 +308,7 @@ const App: React.FC = () => {
                 attendanceRecords={attendanceRecords}
                 schedules={schedules}
                 staffList={staffList}
+                settings={settings}
               />
             } />
             <Route path="history" element={

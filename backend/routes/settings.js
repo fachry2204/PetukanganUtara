@@ -29,6 +29,12 @@ router.get('/', async (req, res) => {
                 enableAttendance: false,
                 enableTasks: false,
                 adminPhone: ''
+            },
+            securityConfig: s.security_config ? (typeof s.security_config === 'string' ? JSON.parse(s.security_config) : s.security_config) : {
+                enforceServerTime: true,
+                detectMockGps: true,
+                gpsAccuracyThreshold: 50,
+                lockMockGps: true
             }
         };
         
@@ -52,7 +58,8 @@ router.post('/', async (req, res) => {
         anjunganBackground,
         zonaList,
         shiftConfig,
-        waGatewayConfig
+        waGatewayConfig,
+        securityConfig
     } = req.body;
     
     try {
@@ -78,7 +85,8 @@ router.post('/', async (req, res) => {
             anjungan_background: anjunganBackground !== undefined ? anjunganBackground : current.anjungan_background,
             zona_list: zonaList !== undefined ? JSON.stringify(zonaList) : current.zona_list,
             shift_config: shiftConfig !== undefined ? JSON.stringify(shiftConfig) : current.shift_config,
-            wa_gateway_config: waGatewayConfig !== undefined ? JSON.stringify(waGatewayConfig) : current.wa_gateway_config
+            wa_gateway_config: waGatewayConfig !== undefined ? JSON.stringify(waGatewayConfig) : current.wa_gateway_config,
+            security_config: securityConfig !== undefined ? JSON.stringify(securityConfig) : current.security_config
         };
 
         // 3. Execute Update
@@ -94,7 +102,8 @@ router.post('/', async (req, res) => {
                 anjungan_background = ?,
                 zona_list = ?,
                 shift_config = ?,
-                wa_gateway_config = ?
+                wa_gateway_config = ?,
+                security_config = ?
             WHERE id = ?
         `, [
             data.system_name, 
@@ -108,6 +117,7 @@ router.post('/', async (req, res) => {
             data.zona_list,
             data.shift_config,
             data.wa_gateway_config,
+            data.security_config,
             'app_settings'
         ]);
         

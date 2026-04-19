@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Camera, MapPin, RefreshCw, CheckCircle2, AlertTriangle, Send, ShieldCheck, ClipboardList } from 'lucide-react';
-import { User as UserType, TugasPPSU, Staff, ReportStatus, AttendanceRecord } from '../types';
+import { User as UserType, TugasPPSU, Staff, ReportStatus, AttendanceRecord, SystemSettings } from '../types';
 import LocationMiniMap from './LocationMiniMap';
 import { apiService } from '../services/api';
 
@@ -11,11 +11,12 @@ export interface PPSUTaskInputSectionProps {
   attendanceRecords?: AttendanceRecord[];
   schedules?: any[];
   staffList?: any[];
+  settings?: SystemSettings;
 }
 
-const PPSUTaskInputSection: React.FC<PPSUTaskInputSectionProps> = ({ user, tugasList, setTugasList, attendanceRecords = [], schedules = [], staffList = [] }) => {
+const PPSUTaskInputSection: React.FC<PPSUTaskInputSectionProps> = ({ user, tugasList, setTugasList, attendanceRecords = [], schedules = [], staffList = [], settings }) => {
   const [step, setStep] = useState<'idle' | 'form' | 'locating' | 'verify_location' | 'camera' | 'success'>('idle');
-  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [location, setLocation] = useState<{ lat: number; lng: number, accuracy?: number, isMocked?: boolean } | null>(null);
   const [photo, setPhoto] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -24,7 +25,16 @@ const PPSUTaskInputSection: React.FC<PPSUTaskInputSectionProps> = ({ user, tugas
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
   const [submittedTime, setSubmittedTime] = useState<Date | null>(null);
   const [isSecure, setIsSecure] = useState<boolean>(false);
+  const [isMockDetected, setIsMockDetected] = useState<boolean>(false);
+  const [accuracyError, setAccuracyError] = useState<string | null>(null);
   const [address, setAddress] = useState<string>('Memuat detail alamat...');
+
+  const security = settings?.securityConfig || {
+    enforceServerTime: true,
+    detectMockGps: true,
+    gpsAccuracyThreshold: 50,
+    lockMockGps: true
+  };
 
   // Lock UI if they haven't clocked in today
   const todayDateStr = new Date().toISOString().split('T')[0];
@@ -106,6 +116,8 @@ const PPSUTaskInputSection: React.FC<PPSUTaskInputSectionProps> = ({ user, tugas
 
     setStep('locating');
     setError(null);
+    setAccuracyError(null);
+    setIsMockDetected(false);
     
     if (!navigator.geolocation) {
       setError('Geolocation tidak didukung oleh browser ini.');
@@ -117,7 +129,23 @@ const PPSUTaskInputSection: React.FC<PPSUTaskInputSectionProps> = ({ user, tugas
       async (position) => {
         const lat = position.coords.latitude;
         const lng = position.coords.longitude;
-        setLocation({ lat, lng });
+        const accuracy = position.coords.accuracy;
+        const isMocked = (position as any).coords.mocked || false;
+
+        setLocation({ lat, lng, accuracy, isMocked });
+
+        // Security checks
+        if (security.detectMockGps && isMocked) {
+            setIsMockDetected(true);
+            if (security.lockMockGps) {
+                setError('⚠️ Manipulasi GPS terdeteksi!');
+            }
+        }
+
+        if (accuracy > security.gpsAccuracyThreshold) {
+            setAccuracyError(`Akurasi GPS lemah (${Math.round(accuracy)}m). Butuh minimal ${security.gpsAccuracyThreshold}m.`);
+        }
+
         setStep('verify_location');
         
         try {
@@ -133,14 +161,19 @@ const PPSUTaskInputSection: React.FC<PPSUTaskInputSectionProps> = ({ user, tugas
         }
       },
       (err) => {
-        setError('Gagal mendapatkan lokasi. Pastikan GPS aktif dengan akurasi tinggi (Anti-Mock).');
+        setError('Gagal mendapatkan lokasi. Pastikan GPS aktif dengan akurasi tinggi.');
         setStep('idle');
       },
-      { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
     );
   };
 
   const openCamera = async () => {
+    if (security.lockMockGps && isMockDetected) {
+        alert("Manipulasi lokasi terdeteksi. Akses ditolak.");
+        return;
+    }
+
     setStep('camera');
     try {
       // Use environment or user facing back camera
@@ -153,21 +186,27 @@ const PPSUTaskInputSection: React.FC<PPSUTaskInputSectionProps> = ({ user, tugas
         videoRef.current.srcObject = mediaStream;
       }
       
-      // Request accurate time to local robust node server
-      fetch('http://localhost:5000/api/time')
-        .then(res => res.json())
-        .then(data => {
-            const serverDate = new Date(data.datetime);
-            const offset = serverDate.getTime() - Date.now();
-            setTimeOffset(offset);
-            setCurrentTime(new Date(Date.now() + offset));
-            setIsSecure(true);
-        })
-        .catch(() => {
-           setTimeOffset(0);
-           setCurrentTime(new Date());
-           setIsSecure(true);
-        });
+      // Request accurate time
+      if (security.enforceServerTime) {
+          fetch('/api/time')
+            .then(res => res.json())
+            .then(data => {
+                const serverDate = new Date(data.datetime);
+                const offset = serverDate.getTime() - Date.now();
+                setTimeOffset(offset);
+                setCurrentTime(new Date(Date.now() + offset));
+                setIsSecure(true);
+            })
+            .catch(() => {
+               setTimeOffset(0);
+               setCurrentTime(new Date());
+               setIsSecure(false);
+            });
+      } else {
+          setTimeOffset(0);
+          setCurrentTime(new Date());
+          setIsSecure(true);
+      }
     } catch (err) {
       setError('Gagal mengakses kamera. Izin ditolak.');
       setStep('idle');
@@ -512,17 +551,41 @@ const PPSUTaskInputSection: React.FC<PPSUTaskInputSectionProps> = ({ user, tugas
           <div className="space-y-4 mt-6">
             <div className="bg-white border-2 border-slate-100 p-4 rounded-3xl shadow-sm flex flex-col gap-3">
               <h3 className="text-slate-800 font-bold text-center mb-2">Verifikasi Titik Lokasi</h3>
+
+              {isMockDetected && (
+                <div className="bg-rose-50 border border-rose-200 p-4 rounded-2xl flex items-center gap-3 text-rose-600 animate-pulse">
+                   <AlertTriangle size={24} />
+                   <div className="flex-1">
+                      <p className="text-xs font-black uppercase">Manipulasi GPS Terdeteksi!</p>
+                      <p className="text-[10px] font-bold opacity-80 leading-tight">Sistem mendeteksi penggunaan Fake GPS. Segera matikan aplikasi tersebut atau laporan akan diblokir.</p>
+                   </div>
+                </div>
+              )}
+
               <div className="flex flex-col gap-2 mb-2">
                   <div className="bg-slate-50 text-slate-700 p-3 rounded-xl text-xs font-mono border border-slate-200 flex flex-col justify-center gap-1 shadow-sm">
-                    <span className="flex items-center gap-2 font-bold text-emerald-600">
-                      <MapPin size={12} /> Real-Time Coordinates
-                    </span>
+                    <div className="flex items-center justify-between font-bold">
+                        <span className="flex items-center gap-2 text-emerald-600">
+                          <MapPin size={12} /> Real-Time Coordinates
+                        </span>
+                        {location?.accuracy && (
+                            <span className={`text-[9px] px-2 py-0.5 rounded ${location.accuracy > security.gpsAccuracyThreshold ? 'bg-rose-100 text-rose-500' : 'bg-emerald-100 text-emerald-600'}`}>
+                                Accuracy: {Math.round(location.accuracy)}m
+                            </span>
+                        )}
+                    </div>
                     <div className="grid grid-cols-2 mt-1 font-semibold">
                         <span>LATITUDE: {location?.lat.toFixed(6)}</span>
                         <span>LONGITUDE: {location?.lng.toFixed(6)}</span>
                     </div>
                   </div>
                   
+                  {accuracyError && (
+                    <div className="px-3 py-2 bg-amber-50 text-amber-600 border border-amber-100 rounded-lg text-[10px] font-bold flex items-center gap-2">
+                        <AlertTriangle size={12} /> {accuracyError}
+                    </div>
+                  )}
+
                   {location && <LocationMiniMap lat={location.lat} lng={location.lng} />}
               </div>
 

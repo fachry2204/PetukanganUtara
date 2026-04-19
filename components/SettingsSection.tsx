@@ -19,7 +19,9 @@ import {
   Smartphone,
   QrCode,
   MessageSquare,
-  Power
+  Power,
+  ShieldCheck,
+  Lock
 } from 'lucide-react';
 import { SystemSettings } from '../types';
 import { apiService } from '../services/api';
@@ -33,7 +35,7 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ settings, onUpdate })
   const [localSettings, setLocalSettings] = useState<SystemSettings>(settings);
   const [isDirty, setIsDirty] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
-  const [activeTab, setActiveTab] = useState<'UMUM' | 'JADWAL' | 'WA_GATEWAY'>('UMUM');
+  const [activeTab, setActiveTab] = useState<'UMUM' | 'JADWAL' | 'WA_GATEWAY' | 'KEAMANAN'>('UMUM');
   const [isWaLoading, setIsWaLoading] = useState(false);
   
   // WA Gateway State
@@ -158,6 +160,14 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ settings, onUpdate })
                      ${activeTab === 'WA_GATEWAY' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                  >
                     <Smartphone size={14} /> WA GATEWAY
+                 </button>
+                 <button 
+                   type="button"
+                   onClick={() => setActiveTab('KEAMANAN')}
+                   className={`flex items-center gap-2 px-5 py-2 rounded-xl text-[10px] font-bold transition-all
+                     ${activeTab === 'KEAMANAN' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                 >
+                    <ShieldCheck size={14} /> KEAMANAN
                  </button>
               </div>
           </div>
@@ -491,7 +501,7 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ settings, onUpdate })
                               try {
                                  await apiService.initWa(true);
                               } finally {
-                                 setTimeout(() => setIsWaLoading(false), 5000); // Biarkan polling yang ambil alih setelah 5 detik
+                                 setTimeout(() => setIsWaLoading(false), 5000); 
                               }
                            }}
                            className={`flex items-center gap-2 bg-indigo-600 hover:bg-slate-900 text-white px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-indigo-100 transition-all ${isWaLoading ? 'opacity-50 cursor-wait' : ''}`}
@@ -597,6 +607,157 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ settings, onUpdate })
                            </div>
                         </div>
                       </div>
+                  </div>
+               </div>
+            </div>
+          )}
+
+          {activeTab === 'KEAMANAN' && (
+            <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                  <div className="md:col-span-2 space-y-6">
+                    <div className="bg-white p-10 rounded-[2.5rem] shadow-sm border border-slate-200">
+                      <h3 className="text-xl font-black text-slate-800 mb-8 flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-500 flex items-center justify-center shadow-sm">
+                            <ShieldCheck size={28} />
+                        </div>
+                        Keamanan & Integritas Data
+                      </h3>
+                      
+                      <div className="space-y-8">
+                        <div className="flex items-center justify-between p-6 bg-slate-50 rounded-[2rem] border border-transparent hover:border-rose-100 transition-all">
+                           <div>
+                              <p className="text-sm font-black text-slate-800 uppercase tracking-tight">Enforce Server Time</p>
+                              <p className="text-[11px] font-bold text-slate-400 mt-1">Gunakan waktu dari server untuk mencegah manipulasi jam di HP personil.</p>
+                           </div>
+                           <button
+                              type="button"
+                              onClick={() => {
+                                 const config = { ...localSettings.securityConfig, enforceServerTime: !localSettings.securityConfig?.enforceServerTime } as any;
+                                 handleChange(prev => ({...prev, securityConfig: config}));
+                              }}
+                              className={`w-14 h-7 rounded-full relative transition-all ${localSettings.securityConfig?.enforceServerTime ? 'bg-rose-500' : 'bg-slate-300'}`}
+                           >
+                              <div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-all ${localSettings.securityConfig?.enforceServerTime ? 'left-8' : 'left-1'}`} />
+                           </button>
+                        </div>
+
+                        <div className="flex items-center justify-between p-6 bg-slate-50 rounded-[2rem] border border-transparent hover:border-rose-100 transition-all">
+                           <div>
+                              <p className="text-sm font-black text-slate-800 uppercase tracking-tight">Detect Mock GPS (Heuristic)</p>
+                              <p className="text-[11px] font-bold text-slate-400 mt-1">Deteksi penggunaan aplikasi Fake GPS / Manipulasi Lokasi.</p>
+                           </div>
+                           <button
+                              type="button"
+                              onClick={() => {
+                                 const config = { ...localSettings.securityConfig, detectMockGps: !localSettings.securityConfig?.detectMockGps } as any;
+                                 handleChange(prev => ({...prev, securityConfig: config}));
+                              }}
+                              className={`w-14 h-7 rounded-full relative transition-all ${localSettings.securityConfig?.detectMockGps ? 'bg-rose-500' : 'bg-slate-300'}`}
+                           >
+                              <div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-all ${localSettings.securityConfig?.detectMockGps ? 'left-8' : 'left-1'}`} />
+                           </button>
+                        </div>
+
+                        <div className="flex items-center justify-between p-6 bg-slate-50 rounded-[2rem] border border-transparent hover:border-rose-100 transition-all">
+                           <div>
+                              <p className="text-sm font-black text-slate-800 uppercase tracking-tight">Lock on Mock Detection</p>
+                              <p className="text-[11px] font-bold text-slate-400 mt-1">Kunci tombol absen jika sistem mendeteksi manipulasi GPS.</p>
+                           </div>
+                           <button
+                              type="button"
+                              onClick={() => {
+                                 const config = { ...localSettings.securityConfig, lockMockGps: !localSettings.securityConfig?.lockMockGps } as any;
+                                 handleChange(prev => ({...prev, securityConfig: config}));
+                              }}
+                              className={`w-14 h-7 rounded-full relative transition-all ${localSettings.securityConfig?.lockMockGps ? 'bg-rose-500' : 'bg-slate-300'}`}
+                           >
+                              <div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-all ${localSettings.securityConfig?.lockMockGps ? 'left-8' : 'left-1'}`} />
+                           </button>
+                        </div>
+
+                        <div className="p-6 bg-slate-50 rounded-[2rem] space-y-4">
+                           <div className="flex items-center justify-between">
+                              <div>
+                                 <p className="text-sm font-black text-slate-800 uppercase tracking-tight">GPS Accuracy Threshold</p>
+                                 <p className="text-[11px] font-bold text-slate-400 mt-1">Akurasi minimal (dalam meter) untuk mengizinkan absen.</p>
+                              </div>
+                              <span className="text-lg font-black text-rose-500">{localSettings.securityConfig?.gpsAccuracyThreshold || 50}m</span>
+                           </div>
+                           <input 
+                              type="range" 
+                              min="5" 
+                              max="200" 
+                              step="5"
+                              value={localSettings.securityConfig?.gpsAccuracyThreshold || 50}
+                              onChange={(e) => {
+                                 const config = { ...localSettings.securityConfig, gpsAccuracyThreshold: parseInt(e.target.value) } as any;
+                                 handleChange(prev => ({...prev, securityConfig: config}));
+                              }}
+                              className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-rose-500"
+                           />
+                           <div className="flex justify-between text-[9px] font-black text-slate-400 uppercase tracking-widest pt-1">
+                              <span>Sangat Akurat (5m)</span>
+                              <span>Standar (50m)</span>
+                              <span>Longgar (200m)</span>
+                           </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-10 pt-6 border-t border-slate-100 flex justify-end">
+                        <button 
+                          type="button"
+                          onClick={() => handleSave()}
+                          className={`flex items-center gap-3 px-10 py-4 rounded-2xl text-xs font-black uppercase tracking-widest transition-all ${isDirty ? 'bg-rose-600 text-white shadow-xl shadow-rose-100' : 'bg-slate-100 text-slate-400'}`}
+                          disabled={!isDirty}
+                        >
+                           <Save size={20} /> {isDirty ? 'Simpan Konfigurasi Keamanan' : 'Sistem Sudah Aman'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-6">
+                    <div className="bg-slate-900 rounded-[2.5rem] p-8 text-white relative overflow-hidden shadow-2xl">
+                       <div className="absolute top-0 right-0 p-8 opacity-10">
+                          <Lock size={120} />
+                       </div>
+                       <div className="relative z-10">
+                          <h4 className="text-lg font-black uppercase tracking-tight mb-4">Pusat Integritas</h4>
+                          <p className="text-slate-400 text-xs leading-relaxed font-medium mb-6">
+                             Sistem keamanan ini didesain untuk memastikan setiap data absensi yang masuk adalah valid, dilakukan pada waktu yang tepat, dan lokasi yang sebenarnya.
+                          </p>
+                          <div className="space-y-4">
+                             <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                                   <CheckCircle2 size={16} />
+                                </div>
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-300 font-mono">Anti-Time Cheat Active</span>
+                             </div>
+                             <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                                   <CheckCircle2 size={16} />
+                                </div>
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-300 font-mono">GPS Signature Verified</span>
+                             </div>
+                             <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                                   <CheckCircle2 size={16} />
+                                </div>
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-300 font-mono">Mock GPS Guard Enabled</span>
+                             </div>
+                          </div>
+                       </div>
+                    </div>
+
+                    <div className="bg-rose-50 rounded-3xl p-6 border border-rose-100">
+                       <div className="flex gap-3">
+                          <AlertTriangle className="text-rose-500 shrink-0" size={20} />
+                          <p className="text-[10px] font-bold text-rose-700 leading-relaxed">
+                             Pengetatan akurasi GPS di bawah 20m dapat menyulitkan personil di dalam ruangan atau gedung dengan sinyal lemah. Gunakan threshold 50-100m untuk keseimbangan terbaik.
+                          </p>
+                       </div>
+                    </div>
                   </div>
                </div>
             </div>

@@ -115,6 +115,12 @@ export interface SystemSettings {
     adminPhone?: string;
     messageDelay?: number;
   };
+  securityConfig?: {
+    enforceServerTime: boolean;
+    detectMockGps: boolean;
+    gpsAccuracyThreshold: number;
+    lockMockGps: boolean;
+  };
 }
 
 export interface Announcement {

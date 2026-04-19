@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Camera, MapPin, RefreshCw, CheckCircle2, AlertTriangle, User, History as HistoryIcon } from 'lucide-react';
-import { User as UserType, AttendanceRecord, AttendanceType } from '../types';
+import { User as UserType, AttendanceRecord, AttendanceType, SystemSettings } from '../types';
 import LocationMiniMap from './LocationMiniMap';
 import { apiService } from '../services/api';
 
@@ -10,12 +10,13 @@ interface AttendanceSectionProps {
   attendanceRecords?: AttendanceRecord[];
   schedules?: any[];
   staffList?: any[];
+  settings?: SystemSettings;
   onRecord?: (record: AttendanceRecord) => void;
 }
 
-const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user, attendanceRecords = [], schedules = [], staffList = [], onRecord }) => {
+const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user, attendanceRecords = [], schedules = [], staffList = [], settings, onRecord }) => {
   const [step, setStep] = useState<'idle' | 'locating' | 'verify_location' | 'camera' | 'success'>('idle');
-  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [location, setLocation] = useState<{ lat: number; lng: number, accuracy?: number, isMocked?: boolean } | null>(null);
   const [photo, setPhoto] = useState<string | null>(null);
   const [requests, setRequests] = useState<any[]>([]);
   const [isRequesting, setIsRequesting] = useState(false);
@@ -26,11 +27,26 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user, attendanceR
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
   const [submittedTime, setSubmittedTime] = useState<Date | null>(null);
   const [isSecure, setIsSecure] = useState<boolean>(false);
+  const [isMockDetected, setIsMockDetected] = useState<boolean>(false);
+  const [accuracyError, setAccuracyError] = useState<string | null>(null);
   const [address, setAddress] = useState<string>('Memuat detail alamat...');
+
+  const security = settings?.securityConfig || {
+    enforceServerTime: true,
+    detectMockGps: true,
+    gpsAccuracyThreshold: 50,
+    lockMockGps: true
+  };
   
   const DAYS = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-  const todayDayName = DAYS[new Date().getDay()];
-  const todayDateStr = new Date().toISOString().split('T')[0];
+  const today = new Date();
+  const todayDayName = DAYS[today.getDay()];
+  
+  // Format YYYY-MM-DD based on LOCAL time (WIB) to avoid UTC offset issues during early morning
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  const todayDateStr = `${yyyy}-${mm}-${dd}`;
 
   const mySchedules = useMemo(() => {
     const myStaffMember = staffList.find(s => s.nik === user.nik || s.nomorAnggota === user.username);
@@ -123,6 +139,8 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user, attendanceR
   const startAttendance = () => {
     setStep('locating');
     setError(null);
+    setAccuracyError(null);
+    setIsMockDetected(false);
     
     if (!navigator.geolocation) {
       setError('Geolocation tidak didukung oleh browser ini.');
@@ -134,7 +152,24 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user, attendanceR
       async (position) => {
         const lat = position.coords.latitude;
         const lng = position.coords.longitude;
-        setLocation({ lat, lng });
+        const accuracy = position.coords.accuracy;
+        const isMocked = (position as any).coords.mocked || false; // Available on some Android browsers
+
+        setLocation({ lat, lng, accuracy, isMocked });
+        
+        // Security checks
+        if (security.detectMockGps && isMocked) {
+            setIsMockDetected(true);
+            if (security.lockMockGps) {
+                setError('⚠️ Manipulasi GPS terdeteksi! Absensi diblokir demi keamanan.');
+                // We keep moving to verify_location to show them WHERE they are caught
+            }
+        }
+
+        if (accuracy > security.gpsAccuracyThreshold) {
+            setAccuracyError(`Akurasi GPS lemah (${Math.round(accuracy)}m). Butuh minimal ${security.gpsAccuracyThreshold}m.`);
+        }
+
         setStep('verify_location');
         
         try {
@@ -153,11 +188,16 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user, attendanceR
         setError('Gagal mendapatkan lokasi. Pastikan GPS aktif dan izin diberikan.');
         setStep('idle');
       },
-      { enableHighAccuracy: true }
+      { enableHighAccuracy: true, timeout: 10000 }
     );
   };
 
   const openCamera = async () => {
+    if (security.lockMockGps && isMockDetected) {
+        alert("Manipulasi lokasi terdeteksi. Akses ditolak.");
+        return;
+    }
+
     setStep('camera');
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({ 
@@ -168,25 +208,29 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user, attendanceR
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
       }
-      // Verifikasi jam ke Server Node.js kita langsung (100% Anti-Mock & Tidak mungkin di-block CORS/DNS)
-      // Gunakan ip localhost karena berjalan di mesin yang sama, kalau di versi production ganti ke domain VPS
-      fetch('http://localhost:5000/api/time')
-        .then(res => res.json())
-        .then(data => {
-            const serverDate = new Date(data.datetime);
-            const offset = serverDate.getTime() - Date.now();
-            setTimeOffset(offset);
-            setCurrentTime(new Date(Date.now() + offset));
-            
-            // Verifikasi Anti-Mock GPS (Heuristik)
-            setIsSecure(true);
-        })
-        .catch(() => {
-           // Fallback if API totally disconnected (offline)
-           setTimeOffset(0);
-           setCurrentTime(new Date());
-           setIsSecure(true);
-        });
+      
+      // Enforce Server Time
+      if (security.enforceServerTime) {
+          fetch('/api/time')
+            .then(res => res.json())
+            .then(data => {
+                const serverDate = new Date(data.datetime);
+                const offset = serverDate.getTime() - Date.now();
+                setTimeOffset(offset);
+                setCurrentTime(new Date(Date.now() + offset));
+                setIsSecure(true);
+            })
+            .catch(() => {
+               setTimeOffset(0);
+               setCurrentTime(new Date());
+               setIsSecure(false);
+               console.warn("Gagal sinkron waktu server, menggunakan waktu lokal.");
+            });
+      } else {
+          setTimeOffset(0);
+          setCurrentTime(new Date());
+          setIsSecure(true);
+      }
     } catch (err) {
       setError('Gagal mengakses kamera. Izin ditolak atau perangkat tidak tersedia.');
       setStep('idle');
@@ -480,17 +524,41 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user, attendanceR
           <div className="space-y-4 mt-6">
             <div className="bg-white border-2 border-slate-100 p-4 rounded-3xl shadow-sm flex flex-col gap-3">
               <h3 className="text-slate-800 font-bold text-center mb-2">Verifikasi Titik Lokasi</h3>
+              
+              {isMockDetected && (
+                <div className="bg-rose-50 border border-rose-200 p-4 rounded-2xl flex items-center gap-3 text-rose-600 animate-pulse">
+                   <AlertTriangle size={24} />
+                   <div className="flex-1">
+                      <p className="text-xs font-black uppercase">Manipulasi GPS Terdeteksi!</p>
+                      <p className="text-[10px] font-bold opacity-80 leading-tight">Sistem mendeteksi penggunaan Fake GPS. Segera matikan aplikasi tersebut atau absen akan diblokir.</p>
+                   </div>
+                </div>
+              )}
+
               <div className="flex flex-col gap-2 mb-2">
                   <div className="bg-slate-50 text-slate-700 p-3 rounded-xl text-xs font-mono border border-slate-200 flex flex-col justify-center gap-1 shadow-sm">
-                    <span className="flex items-center gap-2 font-bold text-emerald-600">
-                      <MapPin size={12} /> Live GPS Coordinate
-                    </span>
+                    <div className="flex items-center justify-between font-bold">
+                        <span className="flex items-center gap-2 text-emerald-600">
+                          <MapPin size={12} /> Live GPS Coordinate
+                        </span>
+                        {location?.accuracy && (
+                            <span className={`text-[9px] px-2 py-0.5 rounded ${location.accuracy > security.gpsAccuracyThreshold ? 'bg-rose-100 text-rose-500' : 'bg-emerald-100 text-emerald-600'}`}>
+                                Accuracy: {Math.round(location.accuracy)}m
+                            </span>
+                        )}
+                    </div>
                     <div className="grid grid-cols-2 mt-1 font-semibold">
                         <span>LAT: {location?.lat.toFixed(6)}</span>
                         <span>LNG: {location?.lng.toFixed(6)}</span>
                     </div>
                   </div>
                   
+                  {accuracyError && (
+                    <div className="px-3 py-2 bg-amber-50 text-amber-600 border border-amber-100 rounded-lg text-[10px] font-bold flex items-center gap-2">
+                        <AlertTriangle size={12} /> {accuracyError}
+                    </div>
+                  )}
+
                   {location && <LocationMiniMap lat={location.lat} lng={location.lng} />}
               </div>
 
