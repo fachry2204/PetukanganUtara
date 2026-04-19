@@ -115,7 +115,10 @@
             padding-bottom: env(safe-area-inset-bottom);
         }
     </style>
-<script type="importmap">
+    <!-- Polyfill for Import Maps (Fix for older iPhone/Safari) -->
+    <script async src="https://ga.jspm.io/npm:es-module-shims@1.10.1/dist/es-module-shims.js"></script>
+
+    <script type="importmap">
 {
   "imports": {
     "react": "https://esm.sh/react@^19.2.3",
