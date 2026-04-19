@@ -1,0 +1,10 @@
+{
+  "ignore": [
+    "whatsapp_auth/*",
+    ".wwebjs_cache/*",
+    "scratch/*",
+    "node_modules/*",
+    "*.log"
+  ],
+  "delay": 2000
+}
