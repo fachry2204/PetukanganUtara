@@ -310,7 +310,8 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({ users, se
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Desktop Table View */}
+        <div className="hidden lg:block overflow-x-auto">
           <table className="w-full text-left">
             <thead className="bg-white border-b border-slate-100">
               <tr>
@@ -396,6 +397,61 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({ users, se
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="lg:hidden divide-y divide-slate-100">
+          {currentItems.map((user) => (
+            <div key={user.id} className="p-6 flex flex-col gap-4">
+              <div className="flex items-center gap-4">
+                <img src={user.avatar} alt={user.username} className="w-14 h-14 rounded-2xl object-cover" />
+                <div className="min-w-0">
+                  <p className="font-black text-slate-800 text-base uppercase tracking-tight">{user.name || user.username}</p>
+                  <p className="text-xs text-indigo-600 font-black uppercase tracking-widest">{user.username}</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Role/Akses</p>
+                  <span className="text-[10px] font-black text-slate-700 uppercase">
+                    {user.role}
+                  </span>
+                </div>
+                <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">NIK</p>
+                  <span className="text-[10px] font-black text-slate-700 font-mono">
+                    {user.nik || '-'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-2">
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => handleResetPasswordClick(user)}
+                    className="p-3 bg-blue-50 text-blue-600 rounded-xl border border-blue-100"
+                  >
+                    <RotateCcw size={18} />
+                  </button>
+                  <button 
+                    onClick={() => handleEditClick(user)}
+                    className="p-3 bg-amber-50 text-amber-600 rounded-xl border border-amber-100"
+                  >
+                    <Pencil size={18} />
+                  </button>
+                </div>
+                {user.role !== 'Administrator' && (
+                  <button 
+                    onClick={() => handleDeleteClick(user)}
+                    className="p-3 bg-rose-50 text-rose-500 rounded-xl border border-rose-100"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
         
         {filteredUsers.length === 0 && (

@@ -243,7 +243,8 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
 
          {activeSubTab === 'LIST' ? (
             <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
-               <div className="overflow-x-auto custom-scrollbar">
+               {/* Desktop Table View */}
+               <div className="hidden lg:block overflow-x-auto custom-scrollbar">
                   <table className="w-full text-left text-sm border-collapse">
                      <thead>
                         <tr className="bg-slate-50 border-b border-slate-100 text-slate-400 uppercase text-[10px] font-black tracking-widest">
@@ -344,6 +345,48 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
                      </tbody>
                   </table>
                </div>
+                </div>
+
+                {/* Mobile Card View (Attendance) */}
+                <div className="lg:hidden divide-y divide-slate-100 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                  {filteredAttendance.map((rec) => (
+                    <div key={rec.id} className="p-5 space-y-4 hover:bg-slate-50/50 transition-colors">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <img src={rec.photo} className="w-12 h-12 rounded-xl object-cover border border-slate-100 shadow-sm" onClick={() => setSelectedPhoto(rec.photo)} />
+                          <div>
+                            <p className="font-black text-slate-800 uppercase text-xs">{rec.userName}</p>
+                            <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase ${
+                              rec.type === 'Absen Masuk' ? 'bg-emerald-50 text-emerald-600' :
+                              rec.type === 'Absen Pulang' ? 'bg-rose-50 text-rose-600' : 'bg-blue-50 text-blue-600'
+                            }`}>
+                              {rec.type}
+                            </span>
+                          </div>
+                        </div>
+                        <button onClick={() => setSelectedAttendance(rec)} className="p-2 text-indigo-500 bg-indigo-50 rounded-lg">
+                          <FileText size={18} />
+                        </button>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-3 text-[10px]">
+                        <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
+                          <p className="text-slate-400 font-bold uppercase mb-0.5">Waktu</p>
+                          <p className="text-slate-700 font-black">{new Date(rec.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</p>
+                        </div>
+                        <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
+                          <p className="text-slate-400 font-bold uppercase mb-0.5">ID</p>
+                          <p className="text-slate-700 font-black">{getPPSUID(rec.userNik)}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-start gap-2 text-[10px] text-slate-500 bg-slate-50 p-3 rounded-lg border border-slate-100 italic">
+                        <MapPin size={14} className="text-rose-400 shrink-0" />
+                        <span className="line-clamp-1">{rec.address}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
             </div>
          ) : (
             <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
@@ -473,7 +516,8 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
          </div>
 
          <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
-            <div className="overflow-x-auto custom-scrollbar">
+            {/* Desktop Table View */}
+            <div className="hidden lg:block overflow-x-auto custom-scrollbar">
                <table className="w-full text-left text-sm border-collapse">
                   <thead>
                      <tr className="bg-slate-50 border-b border-slate-100 text-slate-400 uppercase text-[10px] font-black tracking-widest">
@@ -561,6 +605,41 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
                   </tbody>
                </table>
             </div>
+             </div>
+
+             {/* Mobile Card View (Tasks) */}
+             <div className="lg:hidden divide-y divide-slate-100 max-h-[60vh] overflow-y-auto custom-scrollbar">
+               {filteredTasks.map((t) => (
+                 <div key={t.id} className="p-5 space-y-4 hover:bg-slate-50/50 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3 min-w-0">
+                         <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                            <ClipboardList size={20} />
+                         </div>
+                         <div className="min-w-0">
+                            <p className="font-black text-slate-800 text-xs uppercase truncate">{t.judulTugas}</p>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase truncate line-clamp-1">{t.reporterName}</p>
+                         </div>
+                      </div>
+                      <button onClick={() => setSelectedTask(t)} className="p-2 text-indigo-500 bg-indigo-50 rounded-lg shrink-0">
+                        <Eye size={18} />
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                       <span className={`text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-widest ${
+                         t.status === ReportStatus.VERIFIED || t.status === ReportStatus.COMPLETED ? 'bg-emerald-500 text-white' : 'bg-orange-400 text-white'
+                       }`}>
+                         {t.status === ReportStatus.VERIFICATION ? 'Pending' : t.status}
+                       </span>
+                       <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase">
+                          <Calendar size={12} />
+                          {new Date(t.timestamp).toLocaleDateString('id-ID', {day: '2-digit', month: 'short' })}
+                       </div>
+                    </div>
+                 </div>
+               ))}
+             </div>
          </div>
       </div>
    );

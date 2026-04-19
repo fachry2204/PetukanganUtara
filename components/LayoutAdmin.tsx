@@ -104,29 +104,45 @@ const LayoutAdmin: React.FC<LayoutAdminProps> = ({
   };
 
   return (
-    <div className="flex h-screen bg-white font-sans overflow-hidden">
-      {/* Desktop Sidebar */}
+    <div className="flex h-screen bg-white font-sans overflow-hidden relative">
+      {/* Mobile Sidebar Overlay */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] lg:hidden animate-in fade-in duration-300"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Desktop & Mobile Sidebar */}
       <aside 
-        className={`bg-white border-r border-slate-200 flex flex-col transition-all duration-300 z-30 shadow-sm
-          ${isSidebarOpen ? 'w-72' : 'w-24'} 
+        className={`bg-white border-r border-slate-200 flex flex-col transition-all duration-300 fixed lg:static inset-y-0 left-0 z-[70] shadow-xl lg:shadow-none
+          ${isSidebarOpen || isMobileMenuOpen ? 'w-72 translate-x-0' : 'w-24 -translate-x-full lg:translate-x-0'} 
           ${isSidebarHidden ? 'hidden' : 'block'}`}
       >
-        <div className="p-4 flex items-center gap-3 border-b border-slate-200">
-          <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
-            {settings.logo ? (
-              <img src={settings.logo} alt="Logo" className="w-full h-full object-contain" />
-            ) : (
-              <div className="w-full h-full bg-orange-500 flex items-center justify-center">
-                  <span className="text-white font-bold text-xl">P</span>
+        <div className="p-4 flex items-center justify-between border-b border-slate-200">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
+              {settings.logo ? (
+                <img src={settings.logo} alt="Logo" className="w-full h-full object-contain" />
+              ) : (
+                <div className="w-full h-full bg-orange-500 flex items-center justify-center">
+                    <span className="text-white font-bold text-xl">P</span>
+                </div>
+              )}
+            </div>
+            {(isSidebarOpen || isMobileMenuOpen) && (
+              <div className="overflow-hidden whitespace-nowrap flex-1">
+                <h1 className="font-bold text-slate-800 leading-tight truncate">{settings.systemName}</h1>
+                <p className="text-xs text-slate-500 font-medium truncate">{settings.subName}</p>
               </div>
             )}
           </div>
-          {isSidebarOpen && (
-            <div className="overflow-hidden whitespace-nowrap flex-1">
-              <h1 className="font-bold text-slate-800 leading-tight truncate">{settings.systemName}</h1>
-              <p className="text-xs text-slate-500 font-medium truncate">{settings.subName}</p>
-            </div>
-          )}
+          <button 
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="p-2 text-slate-400 hover:text-slate-600 lg:hidden"
+          >
+            <X size={20} />
+          </button>
         </div>
 
         <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-4 custom-scrollbar">
@@ -134,7 +150,7 @@ const LayoutAdmin: React.FC<LayoutAdminProps> = ({
             const isGroupExpanded = expandedGroups[group.title] !== false;
             return (
               <div key={groupIndex}>
-                {isSidebarOpen && (
+                {(isSidebarOpen || isMobileMenuOpen) && (
                   <button 
                     type="button"
                     onClick={() => toggleGroup(group.title)}
@@ -146,25 +162,25 @@ const LayoutAdmin: React.FC<LayoutAdminProps> = ({
                     {isGroupExpanded ? <ChevronDown size={14} className="text-slate-400" /> : <ChevronRight size={14} className="text-slate-400" />}
                   </button>
                 )}
-                <div className={`space-y-1 transition-all duration-300 ${(isSidebarOpen && !isGroupExpanded) ? 'hidden' : 'block'}`}>
+                <div className={`space-y-1 transition-all duration-300 ${((isSidebarOpen || isMobileMenuOpen) && !isGroupExpanded) ? 'hidden' : 'block'}`}>
                   {group.items.map((item) => (
                     <button
                       key={item.id}
                       onClick={() => {
                         navigate(`/admin/${item.id}`);
-                        if (window.innerWidth < 1024) setIsMobileMenuOpen(false);
+                        setIsMobileMenuOpen(false);
                       }}
                       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative
                         ${currentPath === item.id 
                           ? 'bg-indigo-50 text-indigo-700 shadow-sm' 
                           : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}
-                      title={!isSidebarOpen ? item.label : ''}
+                      title={!(isSidebarOpen || isMobileMenuOpen) ? item.label : ''}
                     >
                       <div className={`p-2 rounded-lg transition-colors shadow-sm
                         ${currentPath === item.id ? item.color + ' text-white' : 'bg-slate-100 text-slate-400 group-hover:bg-white group-hover:text-slate-600'}`}>
                         {item.icon}
                       </div>
-                      {isSidebarOpen && <span className="font-bold text-sm tracking-tight">{item.label}</span>}
+                      {(isSidebarOpen || isMobileMenuOpen) && <span className="font-bold text-sm tracking-tight">{item.label}</span>}
                     </button>
                   ))}
                 </div>
@@ -181,41 +197,54 @@ const LayoutAdmin: React.FC<LayoutAdminProps> = ({
               <div className="p-2 rounded-lg bg-rose-50 text-rose-500 group-hover:bg-rose-500 group-hover:text-white transition-colors">
                  <LogOut size={20} />
               </div>
-              {isSidebarOpen && <span className="font-bold text-sm uppercase tracking-widest text-[10px]">Logout Account</span>}
+              {(isSidebarOpen || isMobileMenuOpen) && <span className="font-bold text-sm uppercase tracking-widest text-[11px]">Logout Account</span>}
            </button>
         </div>
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-w-0 h-full relative z-0">
+      <main className="flex-1 flex flex-col min-w-0 h-full relative z-0 overflow-hidden">
          {/* Top Header */}
-         <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-20">
-            <div className="flex items-center gap-4">
+         <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-8 sticky top-0 z-20 shrink-0">
+            <div className="flex items-center gap-3 md:gap-4">
+               {/* Mobile Menu Toggle */}
+               <button 
+                  onClick={() => setIsMobileMenuOpen(true)}
+                  className="p-2 bg-slate-50 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all lg:hidden"
+               >
+                  <Menu size={20} />
+               </button>
+
+               {/* Desktop Sidebar Toggle */}
                <button 
                   onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                  className="p-2 bg-slate-50 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all hidden md:block"
+                  className="p-2 bg-slate-50 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all hidden lg:block"
                >
                   <PanelLeftClose size={20} className={`transition-transform duration-300 ${!isSidebarOpen ? 'rotate-180' : ''}`} />
                </button>
-               <h2 className="text-xl font-black text-slate-800 tracking-tight flex items-center gap-2">
-                  <Activity size={20} className="text-indigo-600" />
-                  {currentPath.replace('_', ' ').toUpperCase()}
+
+               <h2 className="text-sm md:text-xl font-black text-slate-800 tracking-tight flex items-center gap-1 md:gap-2 truncate">
+                  <Activity size={18} className="text-indigo-600 shrink-0 hidden xs:block" />
+                  <span className="truncate">{currentPath.replace(/_/g, ' ').toUpperCase()}</span>
                </h2>
             </div>
 
-            <div className="flex items-center gap-6">
-                <div className="hidden lg:flex flex-col items-end">
+            <div className="flex items-center gap-3 md:gap-6">
+                <div className="hidden md:flex flex-col items-end">
                    <p className="text-xs font-black text-slate-800 uppercase tracking-wider">{user.name || user.username}</p>
                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">{user.role}</p>
                 </div>
-                <div className="w-12 h-12 rounded-2xl bg-slate-100 border border-slate-200 overflow-hidden shadow-sm relative group cursor-pointer">
+                <div 
+                   onClick={() => navigate('/admin/settings')}
+                   className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-slate-100 border border-slate-200 overflow-hidden shadow-sm relative group cursor-pointer shrink-0"
+                >
                    {user.avatar ? <img src={user.avatar} className="w-full h-full object-cover" /> : <UserCircle className="w-full h-full p-2 text-slate-400" />}
                 </div>
             </div>
          </header>
 
          {/* Inner Content Scroller */}
-         <div className={`flex-1 flex flex-col min-h-0 ${currentPath === 'map' ? '' : 'p-4 md:p-8 overflow-y-auto'} custom-scrollbar`}>
+         <div className={`flex-1 flex flex-col min-h-0 ${currentPath === 'map' ? '' : 'p-4 md:p-8 overflow-y-auto overflow-x-hidden'} custom-scrollbar`}>
             <Outlet />
          </div>
       </main>
