@@ -292,7 +292,7 @@ const ScheduleManagementSection: React.FC<ScheduleManagementSectionProps> = ({ s
                            </td>
                            <td className="py-4 px-4 text-center">
                               <span className="bg-rose-50 text-rose-700 px-3 py-1 rounded-lg text-[10px] font-black border border-rose-100">
-                                 {j.date ? new Date(j.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : j.day}
+                                 {j.date ? new Date(j.date).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-') : j.day}
                               </span>
                            </td>
                            <td className="py-4 px-4 text-center">

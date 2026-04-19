@@ -37,7 +37,8 @@ const PPSUTaskInputSection: React.FC<PPSUTaskInputSectionProps> = ({ user, tugas
   };
 
   // Lock UI if they haven't clocked in today
-  const todayDateStr = new Date().toISOString().split('T')[0];
+  // Format YYYY-MM-DD based on LOCAL time (WIB) to avoid UTC offset issues during early morning
+  const todayDateStr = new Date().toLocaleDateString('en-CA');
   const [hasCheckedIn, setHasCheckedIn] = useState<boolean>(false);
   const [hasCheckedOut, setHasCheckedOut] = useState<boolean>(false);
   const [hasSebelumTugas, setHasSebelumTugas] = useState<boolean>(false);
@@ -46,16 +47,26 @@ const PPSUTaskInputSection: React.FC<PPSUTaskInputSectionProps> = ({ user, tugas
   const [hasIstirahat, setHasIstirahat] = useState<boolean>(false);
   const [hasSelesaiIstirahat, setHasSelesaiIstirahat] = useState<boolean>(false);
 
+  const normalizeDate = (d: any) => {
+    if (!d) return '';
+    try {
+        const dateObj = new Date(d);
+        return dateObj.toLocaleDateString('en-CA'); 
+    } catch (e) {
+        return String(d).split('T')[0];
+    }
+  };
+
   useEffect(() => {
      if (step === 'idle') {
         const sebelumTugasStatus = localStorage.getItem(`task_${user.nik}_${todayDateStr}_Sebelum Tugas`) === 'true';
         const sedangTugasStatus = localStorage.getItem(`task_${user.nik}_${todayDateStr}_Sedang Tugas`) === 'true';
         const selesaiTugasStatus = localStorage.getItem(`task_${user.nik}_${todayDateStr}_Selesai Tugas`) === 'true';
         
-        const checkedInStatus = attendanceRecords.some(r => r.userNik === user.nik && r.type === 'Absen Masuk' && r.timestamp.startsWith(todayDateStr));
-        const checkedOutStatus = attendanceRecords.some(r => r.userNik === user.nik && r.type === 'Absen Pulang' && r.timestamp.startsWith(todayDateStr));
-        const istirahatStatus = attendanceRecords.some(r => r.userNik === user.nik && r.type === 'Istirahat' && r.timestamp.startsWith(todayDateStr));
-        const selesaiIstirahatStatus = attendanceRecords.some(r => r.userNik === user.nik && r.type === 'Selesai Istirahat' && r.timestamp.startsWith(todayDateStr));
+        const checkedInStatus = attendanceRecords.some(r => r.userNik === user.nik && r.type === 'Absen Masuk' && normalizeDate(r.timestamp) === todayDateStr);
+        const checkedOutStatus = attendanceRecords.some(r => r.userNik === user.nik && r.type === 'Absen Pulang' && normalizeDate(r.timestamp) === todayDateStr);
+        const istirahatStatus = attendanceRecords.some(r => r.userNik === user.nik && r.type === 'Istirahat' && normalizeDate(r.timestamp) === todayDateStr);
+        const selesaiIstirahatStatus = attendanceRecords.some(r => r.userNik === user.nik && r.type === 'Selesai Istirahat' && normalizeDate(r.timestamp) === todayDateStr);
 
         setHasCheckedIn(checkedInStatus);
         setHasCheckedOut(checkedOutStatus);
@@ -225,8 +236,9 @@ const PPSUTaskInputSection: React.FC<PPSUTaskInputSectionProps> = ({ user, tugas
         ctx.fillStyle = "white";
         ctx.font = "bold 16px Arial";
         const timeToPrint = currentTime || new Date();
-        const dateStr = timeToPrint.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'medium', timeStyle: 'medium' });
-        ctx.fillText(`Waktu: ${dateStr} (GMT+7)`, 20, 30);
+        const dateStr = timeToPrint.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-');
+        const timeStr = timeToPrint.toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':');
+        ctx.fillText(`Waktu: ${dateStr} ${timeStr} (GMT+7)`, 20, 30);
         ctx.fillText(`GPS Lat: ${location.lat.toFixed(6)}`, 20, 55);
         ctx.fillText(`GPS Lng: ${location.lng.toFixed(6)}`, 20, 80);
         ctx.fillText(`Status: ${taskStatus}`, 20, 105);
@@ -614,7 +626,7 @@ const PPSUTaskInputSection: React.FC<PPSUTaskInputSectionProps> = ({ user, tugas
                 <div className="flex items-center gap-2 text-xs font-mono">
                   {currentTime && (
                     <span className="text-slate-300">
-                       {currentTime.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', year: 'numeric', hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                       {currentTime.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-')} {currentTime.toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':')}
                     </span>
                   )}
                 </div>
@@ -675,7 +687,7 @@ const PPSUTaskInputSection: React.FC<PPSUTaskInputSectionProps> = ({ user, tugas
                 <div className="flex flex-col gap-1 pb-3 border-b border-slate-200">
                   <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Waktu Laporan (Server)</span>
                   <span className="font-black text-slate-800 text-sm">
-                      {submittedTime ? `${submittedTime.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'full' })} - ${submittedTime.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', timeStyle: 'medium' })}` : '-'}
+                      {submittedTime ? `${submittedTime.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-')} - ${submittedTime.toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit' }).replace(/\./g, ':')}` : '-'}
                   </span>
                 </div>
                 

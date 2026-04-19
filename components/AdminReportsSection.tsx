@@ -301,10 +301,10 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
                                     })()}
                                  </td>
                                  <td className="py-4 px-4 text-center font-bold text-slate-500 text-xs text-nowrap">
-                                    {new Date(rec.timestamp).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                    {new Date(rec.timestamp).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-')}
                                  </td>
                                  <td className="py-4 px-4 text-center font-black text-slate-800 text-xs">
-                                    {new Date(rec.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':')}
+                                    {new Date(rec.timestamp).toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':')}
                                  </td>
                                  <td className="py-4 px-4 max-w-xs">
                                     <div className="flex items-start gap-2">
@@ -375,7 +375,7 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
                       <div className="grid grid-cols-2 gap-3 text-[10px]">
                         <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
                           <p className="text-slate-400 font-bold uppercase mb-0.5">Waktu</p>
-                          <p className="text-slate-700 font-black">{new Date(rec.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</p>
+                          <p className="text-slate-700 font-black">{new Date(rec.timestamp).toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit' }).replace(/\./g, ':')}</p>
                         </div>
                         <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
                           <p className="text-slate-400 font-bold uppercase mb-0.5">ID</p>
@@ -422,10 +422,10 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">NIK: {req.nik} • ID: {getPPSUID(req.nik)}</p>
                                  </td>
                                  <td className="py-4 px-4 text-center font-bold text-slate-600">
-                                    {new Date(req.request_date).toLocaleDateString('id-ID', { dateStyle: 'medium' })}
+                                    {new Date(req.request_date).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-')}
                                  </td>
                                  <td className="py-4 px-4 text-center text-xs text-slate-400">
-                                    {new Date(req.created_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}
+                                    {new Date(req.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-')} {new Date(req.created_at).toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit' }).replace(/\./g, ':')}
                                  </td>
                                  <td className="py-4 px-4 text-center uppercase tracking-widest text-[10px] font-black">
                                     <span className={`px-3 py-1 rounded-full ${
@@ -583,8 +583,8 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
                                  </div>
                               </td>
                               <td className="py-4 px-4 font-bold text-slate-600 text-[10px]">
-                                 {new Date(t.timestamp).toLocaleDateString('id-ID')} <br />
-                                 <span className="text-[9px] text-slate-400">{new Date(t.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
+                                 {new Date(t.timestamp).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-')} <br />
+                                 <span className="text-[9px] text-slate-400">{new Date(t.timestamp).toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit' }).replace(/\./g, ':')}</span>
                               </td>
                               <td className="py-4 px-4 text-center">
                                  <span className={`text-[9px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest shadow-sm ${t.status === ReportStatus.COMPLETED || t.status === ReportStatus.VERIFIED ? 'bg-emerald-500 text-white' :
@@ -636,7 +636,7 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
                        </span>
                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase">
                           <Calendar size={12} />
-                          {new Date(t.timestamp).toLocaleDateString('id-ID', {day: '2-digit', month: 'short' })}
+                          {new Date(t.timestamp).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-')}
                        </div>
                     </div>
                  </div>
@@ -680,7 +680,7 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
                                     <p className="text-[10px] font-bold text-slate-400">{rec.type}</p>
                                  </div>
                               </div>
-                              <span className="text-[10px] font-black text-slate-400">{new Date(rec.timestamp).toLocaleTimeString('id-ID')}</span>
+                              <span className="text-[10px] font-black text-slate-400">{new Date(rec.timestamp).toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit' }).replace(/\./g, ':')}</span>
                            </div>
                         ))}
                      </div>
@@ -889,10 +889,10 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
                            <div>
                               <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Waktu & Tanggal</h4>
                               <p className="text-sm font-black text-slate-800">
-                                 {new Date(selectedAttendance.timestamp).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                                 {new Date(selectedAttendance.timestamp).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-')}
                               </p>
                               <p className="text-lg font-black text-indigo-600 mt-0.5">
-                                 {new Date(selectedAttendance.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':')}
+                                 {new Date(selectedAttendance.timestamp).toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':')}
                               </p>
                            </div>
                         </div>

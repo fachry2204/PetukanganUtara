@@ -116,7 +116,8 @@ const LayoutAdmin: React.FC<LayoutAdminProps> = ({
       {/* Desktop & Mobile Sidebar */}
       <aside 
         className={`bg-white border-r border-slate-200 flex flex-col transition-all duration-300 fixed lg:static inset-y-0 left-0 z-[70] shadow-xl lg:shadow-none
-          ${isSidebarOpen || isMobileMenuOpen ? 'w-72 translate-x-0' : 'w-24 -translate-x-full lg:translate-x-0'} 
+          ${isMobileMenuOpen ? 'w-72 translate-x-0' : 'w-72 -translate-x-full lg:translate-x-0'} 
+          ${isSidebarOpen ? 'lg:w-72' : 'lg:w-24'}
           ${isSidebarHidden ? 'hidden' : 'block'}`}
       >
         <div className="p-4 flex items-center justify-between border-b border-slate-200">

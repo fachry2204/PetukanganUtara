@@ -160,10 +160,10 @@ const WhatsAppLogsSection: React.FC = () => {
                     <td className="px-4 py-4 align-top">
                       <div className="flex flex-col">
                         <span className="text-xs font-black text-slate-700">
-                          {new Date(log.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                          {new Date(log.timestamp).toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit' }).replace(/\./g, ':')}
                         </span>
                         <span className="text-[10px] text-slate-400 font-bold">
-                          {new Date(log.timestamp).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                          {new Date(log.timestamp).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-')}
                         </span>
                       </div>
                     </td>

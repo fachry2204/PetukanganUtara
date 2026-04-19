@@ -40,13 +40,23 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user, attendanceR
   
   const DAYS = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
   const today = new Date();
-  const todayDayName = DAYS[today.getDay()];
   
   // Format YYYY-MM-DD based on LOCAL time (WIB) to avoid UTC offset issues during early morning
-  const yyyy = today.getFullYear();
-  const mm = String(today.getMonth() + 1).padStart(2, '0');
-  const dd = String(today.getDate()).padStart(2, '0');
-  const todayDateStr = `${yyyy}-${mm}-${dd}`;
+  // We use this for consistent comparison with DB DATE type
+  const todayDateStr = today.toLocaleDateString('en-CA'); // 'en-CA' gives YYYY-MM-DD
+
+  const normalizeDate = (d: any) => {
+    if (!d) return '';
+    try {
+        // If it's an ISO string or Date object, get the date part in Jakarta timezone (or local)
+        const dateObj = new Date(d);
+        // For MySQL DATE types retrieved via JSON, they usually come as YYYY-MM-DDT00:00:00.000Z
+        // We want the YYYY-MM-DD part that matches the intended date
+        return dateObj.toLocaleDateString('en-CA'); 
+    } catch (e) {
+        return String(d).split('T')[0];
+    }
+  };
 
   const mySchedules = useMemo(() => {
     const myStaffMember = staffList.find(s => s.nik === user.nik || s.nomorAnggota === user.username);
@@ -61,7 +71,7 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user, attendanceR
         const isMyMemberId = sMemberId && (sMemberId === String(user.username || '') || (myStaffMember && sMemberId === String(myStaffMember.nomorAnggota)));
         
         const isMySchedule = isMyNik || isMyStaffId || isMyMemberId;
-        const sDateStr = s.date ? new Date(s.date).toISOString().split('T')[0] : '';
+        const sDateStr = normalizeDate(s.date);
         return isMySchedule && sDateStr === todayDateStr;
     });
   }, [schedules, user.nik, user.username, staffList, todayDateStr]);
@@ -77,10 +87,13 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user, attendanceR
 
   useEffect(() => {
     fetchMyRequests();
+    // Poll every 30 seconds to catch approvals
+    const interval = setInterval(fetchMyRequests, 30000);
+    return () => clearInterval(interval);
   }, [user.nik]);
 
   const approvedRequestForToday = useMemo(() => {
-    return requests.find(r => r.request_date.split('T')[0] === todayDateStr && r.status === 'APPROVED');
+    return requests.find(r => normalizeDate(r.request_date) === todayDateStr && r.status === 'APPROVED');
   }, [requests, todayDateStr]);
 
   const activeSchedule = useMemo(() => {
@@ -92,11 +105,12 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user, attendanceR
   }, [mySchedules, approvedRequestForToday]);
   
   const checkHasAttended = (type: string) => {
-      return attendanceRecords.some(r => 
-        (r.userNik === user.nik || r.userId === user.id) && 
-        r.type === type && 
-        r.timestamp.startsWith(todayDateStr)
-      );
+      return attendanceRecords.some(r => {
+        const isSelf = (r.userNik === user.nik || r.userId === user.id);
+        const isSameType = r.type === type;
+        const isToday = normalizeDate(r.timestamp) === todayDateStr;
+        return isSelf && isSameType && isToday;
+      });
   };
 
   const hasCheckedIn = useMemo(() => checkHasAttended('Absen Masuk'), [attendanceRecords, todayDateStr, user.nik, user.id, activeSchedule]);
@@ -251,8 +265,9 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user, attendanceR
         ctx.fillStyle = "white";
         ctx.font = "bold 16px Arial";
         const timeToPrint = currentTime || new Date();
-        const dateStr = timeToPrint.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'medium', timeStyle: 'medium' });
-        ctx.fillText(`Waktu: ${dateStr} (GMT+7)`, 20, 30);
+        const dateStr = timeToPrint.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-');
+        const timeStr = timeToPrint.toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':');
+        ctx.fillText(`Waktu: ${dateStr} ${timeStr} (GMT+7)`, 20, 30);
         ctx.fillText(`GPS Lat: ${location.lat.toFixed(6)}`, 20, 55);
         ctx.fillText(`GPS Lng: ${location.lng.toFixed(6)}`, 20, 80);
         ctx.fillText(`Status: ${attendanceType}`, 20, 105);
@@ -384,7 +399,7 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user, attendanceR
                 </div>
                 
                 {(() => {
-                    const todayReq = requests.find(r => r.request_date.split('T')[0] === todayDateStr);
+                    const todayReq = requests.find(r => normalizeDate(r.request_date) === todayDateStr);
                     if (todayReq) {
                         return (
                             <div className={`p-4 rounded-2xl border flex flex-col gap-2 ${todayReq.status === 'PENDING' ? 'bg-amber-50/50 border-amber-200' : 'bg-rose-50 border-rose-100'}`}>
@@ -587,7 +602,7 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user, attendanceR
                 <div className="flex items-center gap-2 text-xs font-mono">
                   {currentTime && (
                     <span className="text-slate-300">
-                       {currentTime.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', year: 'numeric', hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                       {currentTime.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-')} {currentTime.toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':')}
                     </span>
                   )}
                 </div>
@@ -638,7 +653,7 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user, attendanceR
                 <div className="flex flex-col gap-1 pb-3 border-b border-slate-200">
                   <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Waktu Terekam (Server)</span>
                   <span className="font-black text-slate-800 text-sm">
-                      {submittedTime ? `${submittedTime.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'full' })} - ${submittedTime.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', timeStyle: 'medium' })}` : '-'}
+                      {submittedTime ? `${submittedTime.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-')} - ${submittedTime.toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit' }).replace(/\./g, ':')}` : '-'}
                   </span>
                 </div>
                 
