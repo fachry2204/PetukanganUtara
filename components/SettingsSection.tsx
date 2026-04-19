@@ -41,6 +41,8 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ settings, onUpdate })
   // WA Gateway State
   const [waStatus, setWaStatus] = useState<{status: string, qrCode: string | null}>({ status: 'DISCONNECTED', qrCode: null });
 
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+
   // Sync localSettings with settings prop ONLY if the user hasn't made changes yet (not dirty)
   useEffect(() => {
     if (!isDirty) {
@@ -68,9 +70,7 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ settings, onUpdate })
         await apiService.updateSettings(localSettings);
         onUpdate(localSettings);
         setIsDirty(false); // Reset dirty flag after successful save
-        setIsSaved(true);
-        alert("📊 Pengaturan sistem berhasil disimpan ke database!");
-        setTimeout(() => setIsSaved(false), 3000);
+        setShowSuccessModal(true);
     } catch (error) {
         console.error("Failed to save settings:", error);
         alert("❌ Gagal menyimpan pengaturan ke database.");
@@ -783,6 +783,27 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ settings, onUpdate })
           </div>
         </div>
       </div>
+      
+      {/* Success Save Modal */}
+      {showSuccessModal && (
+         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-[9999] flex items-center justify-center p-6 animate-in fade-in duration-300">
+            <div className="bg-white w-full max-w-xs rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 border border-slate-100 p-8 text-center">
+               <div className="w-20 h-20 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm border border-emerald-100">
+                  <CheckCircle2 size={40} className="animate-in slide-in-from-bottom-2" />
+               </div>
+               <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight mb-2">Simpan Berhasil</h3>
+               <p className="text-slate-500 text-xs font-bold leading-relaxed mb-8 uppercase tracking-widest">
+                  Pengaturan sistem telah diperbarui dan disimpan dengan aman ke database pusat.
+               </p>
+               <button 
+                  onClick={() => setShowSuccessModal(false)}
+                  className="w-full bg-slate-900 hover:bg-slate-800 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg transition-all active:scale-95"
+               >
+                  Selesai
+               </button>
+            </div>
+         </div>
+      )}
     </div>
   );
 };
