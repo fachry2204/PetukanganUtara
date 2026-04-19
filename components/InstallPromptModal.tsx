@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Download, X, Smartphone, ShieldCheck } from 'lucide-react';
+import { Download, X, Smartphone, ShieldCheck, Share, PlusSquare } from 'lucide-react';
 
 interface InstallPromptModalProps {
     logo: string | null;
@@ -8,16 +8,22 @@ interface InstallPromptModalProps {
 const InstallPromptModal: React.FC<InstallPromptModalProps> = ({ logo }) => {
     const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
     const [showModal, setShowModal] = useState(false);
+    const [isIOS, setIsIOS] = useState(false);
 
     useEffect(() => {
-        // Only run on mobile/desktop browsers that support it
+        // Detect if already in standalone mode (installed)
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
+        if (isStandalone) return;
+
+        // Detect iOS
+        const userAgent = window.navigator.userAgent.toLowerCase();
+        const ios = /iphone|ipad|ipod/.test(userAgent);
+        setIsIOS(ios);
+
         const handler = (e: any) => {
-            // Prevent the mini-infobar from appearing on mobile
             e.preventDefault();
-            // Stash the event so it can be triggered later.
             setDeferredPrompt(e);
             
-            // Check if user has already dismissed it this session
             const dismissed = sessionStorage.getItem('install_prompt_dismissed');
             if (!dismissed) {
                 setShowModal(true);
@@ -26,11 +32,18 @@ const InstallPromptModal: React.FC<InstallPromptModalProps> = ({ logo }) => {
 
         window.addEventListener('beforeinstallprompt', handler);
 
-        // Check if app is already installed
+        // For iOS, we can't detect beforeinstallprompt, so we show it after a delay
+        if (ios && !isStandalone) {
+            const dismissed = sessionStorage.getItem('install_prompt_dismissed');
+            if (!dismissed) {
+                const timer = setTimeout(() => setShowModal(true), 3000);
+                return () => clearTimeout(timer);
+            }
+        }
+
         window.addEventListener('appinstalled', () => {
             setDeferredPrompt(null);
             setShowModal(false);
-            console.log('SiPetut was installed');
         });
 
         return () => window.removeEventListener('beforeinstallprompt', handler);
@@ -38,15 +51,8 @@ const InstallPromptModal: React.FC<InstallPromptModalProps> = ({ logo }) => {
 
     const handleInstallClick = async () => {
         if (!deferredPrompt) return;
-
-        // Show the install prompt
         deferredPrompt.prompt();
-
-        // Wait for the user to respond to the prompt
         const { outcome } = await deferredPrompt.userChoice;
-        console.log(`User response to the install prompt: ${outcome}`);
-
-        // We've used the prompt, and can't use it again, throw it away
         setDeferredPrompt(null);
         setShowModal(false);
     };
@@ -82,37 +88,67 @@ const InstallPromptModal: React.FC<InstallPromptModalProps> = ({ logo }) => {
                 </div>
 
                 <div className="p-8 space-y-6">
-                    <div className="space-y-4">
-                        <div className="flex items-center gap-4 group">
-                            <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                <Smartphone size={20} />
-                            </div>
-                            <div>
-                                <p className="font-black text-slate-800 text-sm">Aplikasi di Layar Utama</p>
-                                <p className="text-[10px] text-slate-400 font-bold uppercase">Buka aplikasi langsung dari Home Screen</p>
+                    {isIOS ? (
+                        <div className="space-y-6">
+                            <p className="text-sm font-bold text-slate-600 leading-relaxed text-center">
+                                Khusus iPhone, pasang aplikasi secara manual:
+                            </p>
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                    <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm text-indigo-600">
+                                        <Share size={20} />
+                                    </div>
+                                    <p className="text-[11px] font-black text-slate-800 uppercase tracking-tight">1. Klik tombol 'Share' di bawah</p>
+                                </div>
+                                <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                    <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm text-orange-600">
+                                        <PlusSquare size={20} />
+                                    </div>
+                                    <p className="text-[11px] font-black text-slate-800 uppercase tracking-tight">2. Pilih 'Add to Home Screen'</p>
+                                </div>
                             </div>
                         </div>
-                        
-                        <div className="flex items-center gap-4 group">
-                            <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                <ShieldCheck size={20} />
+                    ) : (
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-4 group">
+                                <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                    <Smartphone size={20} />
+                                </div>
+                                <div>
+                                    <p className="font-black text-slate-800 text-sm">Aplikasi di Layar Utama</p>
+                                    <p className="text-[10px] text-slate-400 font-bold uppercase">Buka aplikasi langsung dari Home Screen</p>
+                                </div>
                             </div>
-                            <div>
-                                <p className="font-black text-slate-800 text-sm">Resmi & Aman</p>
-                                <p className="text-[10px] text-slate-400 font-bold uppercase">Aplikasi resmi Kelurahan Petukangan Utara</p>
+                            <div className="flex items-center gap-4 group">
+                                <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                    <ShieldCheck size={20} />
+                                </div>
+                                <div>
+                                    <p className="font-black text-slate-800 text-sm">Resmi & Aman</p>
+                                    <p className="text-[10px] text-slate-400 font-bold uppercase">Aplikasi resmi Kelurahan Petukangan Utara</p>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    )}
 
-                    <button 
-                        onClick={handleInstallClick}
-                        className="w-full bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white py-5 rounded-[2rem] font-black uppercase tracking-widest text-sm shadow-xl shadow-orange-200 flex items-center justify-center gap-3 transition-all active:scale-95"
-                    >
-                        Install Sekarang <Download size={20} />
-                    </button>
+                    {!isIOS ? (
+                        <button 
+                            onClick={handleInstallClick}
+                            className="w-full bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white py-5 rounded-[2rem] font-black uppercase tracking-widest text-sm shadow-xl shadow-orange-200 flex items-center justify-center gap-3 transition-all active:scale-95"
+                        >
+                            Pasang Sekarang <Download size={20} />
+                        </button>
+                    ) : (
+                        <button 
+                            onClick={handleDismiss}
+                            className="w-full bg-slate-900 text-white py-5 rounded-[2rem] font-black uppercase tracking-widest text-[10px] shadow-xl transition-all active:scale-95"
+                        >
+                            Saya Mengerti
+                        </button>
+                    )}
 
                     <p className="text-[9px] text-center text-slate-400 font-bold uppercase tracking-tighter">
-                        Tanpa Menguras Memori • Mendukung Notifikasi Real-time
+                        SiPetut Mendukung Akses Latar Belakang & Notifikasi
                     </p>
                 </div>
             </div>

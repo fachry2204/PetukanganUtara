@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#f97316">
     <title>SiPetut - Sistem Informasi PPSU</title>
@@ -25,6 +25,13 @@
         body {
             font-family: 'Inter', sans-serif;
             background-color: #ffffff;
+            touch-action: pan-x pan-y; /* Prevent double-tap zoom but allow scrolling */
+        }
+        /* Mobile Input Focus Zoom Prevention */
+        @media screen and (max-width: 768px) {
+            input, select, textarea {
+                font-size: 16px !important;
+            }
         }
         @media print {
             .no-print {
