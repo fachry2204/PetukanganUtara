@@ -125,11 +125,15 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user, attendanceR
   const [attendanceType, setAttendanceType] = useState<AttendanceType>('Absen Masuk');
 
   useEffect(() => {
-    if (!hasCheckedIn) setAttendanceType('Absen Masuk');
-    else if (!hasIstirahat) setAttendanceType('Istirahat');
-    else if (!hasSelesaiIstirahat) setAttendanceType('Selesai Istirahat');
-    else if (!hasCheckedOut) setAttendanceType('Absen Pulang');
-  }, [hasCheckedIn, hasIstirahat, hasSelesaiIstirahat, hasCheckedOut]);
+    // Only auto-switch type when we are in idle state
+    // This prevents the Success screen from showing the "next" type
+    if (step === 'idle') {
+      if (!hasCheckedIn) setAttendanceType('Absen Masuk');
+      else if (!hasIstirahat) setAttendanceType('Istirahat');
+      else if (!hasSelesaiIstirahat) setAttendanceType('Selesai Istirahat');
+      else if (!hasCheckedOut) setAttendanceType('Absen Pulang');
+    }
+  }, [hasCheckedIn, hasIstirahat, hasSelesaiIstirahat, hasCheckedOut, step]);
 
   // Sync Server Time on Mount
   useEffect(() => {
