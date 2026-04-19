@@ -72,7 +72,8 @@ const PPSUMyReportsSection: React.FC<PPSUMyReportsSectionProps> = ({ user, tugas
                 dataMasuk: { photo: null, lat: null, lng: null },
                 dataIstirahat: { photo: null, lat: null, lng: null },
                 dataSelesaiIstirahat: { photo: null, lat: null, lng: null },
-                dataPulang: { photo: null, lat: null, lng: null }
+                dataPulang: { photo: null, lat: null, lng: null },
+                totalWorkDuration: ''
             };
         }
         
@@ -90,7 +91,7 @@ const PPSUMyReportsSection: React.FC<PPSUMyReportsSectionProps> = ({ user, tugas
             g.timeSelesaiIstirahat = r.timestamp;
             g.dataSelesaiIstirahat = { photo: r.photo, lat: r.latitude, lng: r.longitude };
             
-            // Calculate Durasi
+            // Calculate Durasi Istirahat
             if (g.timeIstirahat) {
                 const start = new Date(g.timeIstirahat).getTime();
                 const end = new Date(r.timestamp).getTime();
@@ -101,6 +102,14 @@ const PPSUMyReportsSection: React.FC<PPSUMyReportsSectionProps> = ({ user, tugas
             g.hasPulang = true;
             g.timePulang = r.timestamp;
             g.dataPulang = { photo: r.photo, lat: r.latitude, lng: r.longitude };
+
+            // Calculate Total Work Duration
+            if (g.timeMasuk) {
+                const startWork = new Date(g.timeMasuk).getTime();
+                const endWork = new Date(r.timestamp).getTime();
+                const diffMin = Math.floor((endWork - startWork) / 60000);
+                g.totalWorkDuration = `${Math.floor(diffMin / 60)} Jam ${diffMin % 60} Menit`;
+            }
         }
     });
 
@@ -175,7 +184,18 @@ const PPSUMyReportsSection: React.FC<PPSUMyReportsSectionProps> = ({ user, tugas
                           <p className="font-bold text-slate-800">{new Date(record.date).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
                        </div>
                     </div>
-                    <ChevronRight size={20} className="text-slate-300 group-hover:text-indigo-400 group-hover:translate-x-1 transition-all" />
+                    <div className="flex items-center gap-3">
+                        {record.totalWorkDuration && (
+                            <div className="bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-xl flex flex-col items-end shrink-0">
+                                <p className="text-[8px] font-black text-emerald-600 uppercase tracking-widest leading-none mb-1">Total Kerja</p>
+                                <p className="text-xs font-black text-emerald-700 leading-none">{record.totalWorkDuration}</p>
+                            </div>
+                        )}
+                        {!record.totalWorkDuration && record.hasMasuk && (
+                            <span className="text-[10px] font-black text-indigo-500 bg-indigo-50 px-3 py-1 rounded-full uppercase tracking-widest animate-pulse shrink-0">On Duty</span>
+                        )}
+                        <ChevronRight size={20} className="text-slate-300 group-hover:text-indigo-400 group-hover:translate-x-1 transition-all" />
+                    </div>
                  </div>
                  
                  <div className="flex justify-between gap-1 mt-4">
@@ -250,15 +270,47 @@ const PPSUMyReportsSection: React.FC<PPSUMyReportsSectionProps> = ({ user, tugas
                   <p className="text-indigo-200 text-[10px] font-black uppercase tracking-widest mb-1">Detail Absensi harian</p>
                   <h3 className="text-xl font-black">{new Date(selectedAttendance.date).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</h3>
               </div>
-              <div className="p-6 space-y-4">
+
+              {/* SUMMARY BAR (Sesuai Permintaan) */}
+              {(selectedAttendance.totalWorkDuration || selectedAttendance.durasiIstirahat) && (
+                  <div className="bg-slate-50 border-b border-slate-100 p-4 px-6 flex gap-3 shrink-0">
+                      {selectedAttendance.totalWorkDuration && (
+                          <div className="flex-1 bg-white p-3 rounded-2xl border border-emerald-100 shadow-sm flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                                  <Clock size={16} />
+                              </div>
+                              <div className="min-w-0">
+                                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Total Kerja</p>
+                                  <p className="text-xs font-black text-emerald-700 truncate">{selectedAttendance.totalWorkDuration}</p>
+                              </div>
+                          </div>
+                      )}
+                      {selectedAttendance.durasiIstirahat && (
+                          <div className="flex-1 bg-white p-3 rounded-2xl border border-amber-100 shadow-sm flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-amber-500 text-white flex items-center justify-center shrink-0">
+                                  <Clock size={16} />
+                              </div>
+                              <div className="min-w-0">
+                                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Istirahat</p>
+                                  <p className="text-xs font-black text-amber-700 truncate">{selectedAttendance.durasiIstirahat}</p>
+                              </div>
+                          </div>
+                      )}
+                  </div>
+              )}
+
+              <div className="p-6 space-y-4 overflow-y-auto custom-scrollbar flex-1">
                   <div className={`p-4 rounded-xl border flex items-center gap-4 relative transition-all ${selectedAttendance.hasMasuk ? 'bg-indigo-50 border-indigo-100' : 'bg-slate-50 border-slate-100 opacity-60'}`}>
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center ${selectedAttendance.hasMasuk ? 'bg-indigo-500 text-white' : 'bg-slate-200 text-slate-400'}`}>
                          <CheckCircle2 size={20} />
                       </div>
                       <div>
                           <p className={`font-bold ${selectedAttendance.hasMasuk ? 'text-indigo-900' : 'text-slate-500'}`}>Absen Masuk</p>
-                          <p className={`text-xs ${selectedAttendance.timeMasuk ? 'text-indigo-600 font-bold' : 'text-slate-500'}`}>
-                              {selectedAttendance.timeMasuk ? new Date(selectedAttendance.timeMasuk).toLocaleTimeString('id-ID', { timeStyle: 'short' }) : 'Belum dilakukan'}
+                          <p className={`text-[10px] font-bold ${selectedAttendance.hasMasuk ? 'text-indigo-400' : 'text-slate-400'}`}>
+                              {selectedAttendance.timeMasuk ? new Date(selectedAttendance.timeMasuk).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-') : '-'}
+                          </p>
+                          <p className={`text-sm ${selectedAttendance.timeMasuk ? 'text-indigo-600 font-black' : 'text-slate-500'}`}>
+                              {selectedAttendance.timeMasuk ? new Date(selectedAttendance.timeMasuk).toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit' }).replace(/\./g, ':') : 'Belum dilakukan'}
                           </p>
                       </div>
                       {renderAttendanceThumbnails(selectedAttendance.dataMasuk, 'Absen Masuk', 'border-indigo-200 hover:border-indigo-400')}
@@ -270,8 +322,11 @@ const PPSUMyReportsSection: React.FC<PPSUMyReportsSectionProps> = ({ user, tugas
                       </div>
                       <div>
                           <p className={`font-bold ${selectedAttendance.hasIstirahat ? 'text-amber-900' : 'text-slate-500'}`}>Mulai Istirahat</p>
-                          <p className={`text-xs ${selectedAttendance.timeIstirahat ? 'text-amber-600 font-bold' : 'text-slate-500'}`}>
-                              {selectedAttendance.timeIstirahat ? new Date(selectedAttendance.timeIstirahat).toLocaleTimeString('id-ID', { timeStyle: 'short' }) : 'Belum dilakukan'}
+                          <p className={`text-[10px] font-bold ${selectedAttendance.hasIstirahat ? 'text-amber-400' : 'text-slate-400'}`}>
+                              {selectedAttendance.timeIstirahat ? new Date(selectedAttendance.timeIstirahat).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-') : '-'}
+                          </p>
+                          <p className={`text-sm ${selectedAttendance.timeIstirahat ? 'text-amber-600 font-black' : 'text-slate-500'}`}>
+                              {selectedAttendance.timeIstirahat ? new Date(selectedAttendance.timeIstirahat).toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit' }).replace(/\./g, ':') : 'Belum dilakukan'}
                           </p>
                       </div>
                       {renderAttendanceThumbnails(selectedAttendance.dataIstirahat, 'Mulai Istirahat', 'border-amber-200 hover:border-amber-400')}
@@ -284,8 +339,11 @@ const PPSUMyReportsSection: React.FC<PPSUMyReportsSectionProps> = ({ user, tugas
                       <div>
                           <p className={`font-bold ${selectedAttendance.hasSelesaiIstirahat ? 'text-cyan-900' : 'text-slate-500'} mb-0.5`}>Selesai Istirahat</p>
                           <div className="flex flex-col items-start gap-1">
-                              <p className={`text-xs ${selectedAttendance.timeSelesaiIstirahat ? 'text-cyan-600 font-bold' : 'text-slate-500'}`}>
-                                  {selectedAttendance.timeSelesaiIstirahat ? new Date(selectedAttendance.timeSelesaiIstirahat).toLocaleTimeString('id-ID', { timeStyle: 'short' }) : 'Belum dilakukan'}
+                              <p className={`text-[10px] font-bold ${selectedAttendance.hasSelesaiIstirahat ? 'text-cyan-400' : 'text-slate-400'}`}>
+                                  {selectedAttendance.timeSelesaiIstirahat ? new Date(selectedAttendance.timeSelesaiIstirahat).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-') : '-'}
+                              </p>
+                              <p className={`text-sm ${selectedAttendance.timeSelesaiIstirahat ? 'text-cyan-600 font-black' : 'text-slate-500'}`}>
+                                  {selectedAttendance.timeSelesaiIstirahat ? new Date(selectedAttendance.timeSelesaiIstirahat).toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit' }).replace(/\./g, ':') : 'Belum dilakukan'}
                               </p>
                               {selectedAttendance.durasiIstirahat && <span className="bg-cyan-100 text-cyan-800 text-[10px] px-2 py-0.5 rounded-md font-bold inline-block leading-tight">{selectedAttendance.durasiIstirahat}</span>}
                           </div>
@@ -299,9 +357,19 @@ const PPSUMyReportsSection: React.FC<PPSUMyReportsSectionProps> = ({ user, tugas
                       </div>
                       <div>
                           <p className={`font-bold ${selectedAttendance.hasPulang ? 'text-emerald-900' : 'text-slate-500'}`}>Absen Pulang</p>
-                          <p className={`text-xs ${selectedAttendance.timePulang ? 'text-emerald-600 font-bold' : 'text-slate-500'}`}>
-                              {selectedAttendance.timePulang ? new Date(selectedAttendance.timePulang).toLocaleTimeString('id-ID', { timeStyle: 'short' }) : 'Belum dilakukan'}
+                          <p className={`text-[10px] font-bold ${selectedAttendance.hasPulang ? 'text-emerald-400' : 'text-slate-400'}`}>
+                              {selectedAttendance.timePulang ? new Date(selectedAttendance.timePulang).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-') : '-'}
                           </p>
+                          <div className="flex flex-col items-start gap-1">
+                              <p className={`text-sm ${selectedAttendance.timePulang ? 'text-emerald-600 font-black' : 'text-slate-500'}`}>
+                                  {selectedAttendance.timePulang ? new Date(selectedAttendance.timePulang).toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit' }).replace(/\./g, ':') : 'Belum dilakukan'}
+                              </p>
+                              {selectedAttendance.totalWorkDuration && (
+                                  <span className="bg-emerald-100 text-emerald-800 text-[9px] px-2 py-0.5 rounded-md font-black uppercase tracking-widest inline-block border border-emerald-200 shadow-sm animate-pulse">
+                                      Total Jam Kerja: {selectedAttendance.totalWorkDuration}
+                                  </span>
+                              )}
+                          </div>
                       </div>
                       {renderAttendanceThumbnails(selectedAttendance.dataPulang, 'Absen Pulang', 'border-emerald-200 hover:border-emerald-400')}
                   </div>
