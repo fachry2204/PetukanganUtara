@@ -1,8 +1,8 @@
 import { TugasPPSU, Staff, User, SystemSettings } from '../types';
 
 // Konfigurasi URL Backend
-// Gunakan environment variable VITE_API_URL jika ada (saat di hosting), jika tidak gunakan localhost
-const API_BASE_URL = (import.meta as any).env.VITE_API_URL || 'http://localhost:5000/api';
+// Gunakan environment variable VITE_API_URL jika ada (saat di hosting), jika tidak gunakan relative path /api
+const API_BASE_URL = (import.meta as any).env.VITE_API_URL || '/api';
 
 // Helper untuk fetch
 const fetchData = async (endpoint: string) => {
@@ -56,13 +56,13 @@ export const apiService = {
     getStaff: (): Promise<Staff[]> => fetchData('/staff'),
     createStaff: (staff: Staff) => postData('/staff', staff),
     updateStaff: (staff: Staff) => putData(`/staff/${staff.id}`, staff),
-    deleteStaff: (id: string) => fetch(`${(import.meta as any).env.VITE_API_URL || 'http://localhost:5000/api'}/staff/${id}`, { method: 'DELETE' }).then(r => r.json()),
+    deleteStaff: (id: string) => fetch(`${API_BASE_URL}/staff/${id}`, { method: 'DELETE' }).then(r => r.json()),
 
     // --- USERS ---
     getUsers: (): Promise<User[]> => fetchData('/users'),
     createUser: (user: User) => postData('/users', user),
     updateUser: (user: User) => putData(`/users/${user.id}`, user),
-    deleteUser: (id: string) => fetch(`${(import.meta as any).env.VITE_API_URL || 'http://localhost:5000/api'}/users/${id}`, { method: 'DELETE' }).then(r => r.json()),
+    deleteUser: (id: string) => fetch(`${API_BASE_URL}/users/${id}`, { method: 'DELETE' }).then(r => r.json()),
     login: (identifier: string, password: string): Promise<User> => postData('/users/login', { identifier, password }),
 
     // --- ATTENDANCE ---
@@ -72,7 +72,7 @@ export const apiService = {
     // --- ANNOUNCEMENTS ---
     getAnnouncements: (): Promise<any[]> => fetchData('/announcements'),
     createAnnouncement: (ann: any) => postData('/announcements', ann),
-    deleteAnnouncement: (id: string) => fetch(`${(import.meta as any).env.VITE_API_URL || 'http://localhost:5000/api'}/announcements/${id}`, { method: 'DELETE' }).then(r => r.json()),
+    deleteAnnouncement: (id: string) => fetch(`${API_BASE_URL}/announcements/${id}`, { method: 'DELETE' }).then(r => r.json()),
 
     // --- SOS ---
     getSos: (): Promise<any[]> => fetchData('/sos'),
@@ -86,7 +86,7 @@ export const apiService = {
     // --- JADWAL ---
     getJadwal: (): Promise<any[]> => fetchData('/jadwal'),
     createJadwal: (jadwal: any) => postData('/jadwal', jadwal),
-    deleteJadwal: (id: string) => fetch(`${(import.meta as any).env.VITE_API_URL || 'http://localhost:5000/api'}/jadwal/${id}`, { method: 'DELETE' }).then(r => r.json()),
+    deleteJadwal: (id: string) => fetch(`${API_BASE_URL}/jadwal/${id}`, { method: 'DELETE' }).then(r => r.json()),
 
     // --- ATTENDANCE REQUESTS ---
     getAttendanceRequests: (): Promise<any[]> => fetchData('/attendance-requests'),
@@ -100,5 +100,5 @@ export const apiService = {
     logoutWa: () => postData('/whatsapp/logout', {}),
     getWaLogs: (): Promise<any[]> => fetchData('/whatsapp-logs'),
     retryWaMessage: (id: string) => postData(`/whatsapp-logs/retry/${id}`, {}),
-    clearWaLogs: () => fetch(`${(import.meta as any).env.VITE_API_URL || 'http://localhost:5000/api'}/whatsapp-logs`, { method: 'DELETE' }).then(r => r.json())
+    clearWaLogs: () => fetch(`${API_BASE_URL}/whatsapp-logs`, { method: 'DELETE' }).then(r => r.json())
 };

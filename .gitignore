@@ -1,8 +1,6 @@
 node_modules
-.env
 backend/whatsapp_auth/
 backend/.wwebjs_cache/
 backend/scratch/
-build
 .DS_Store
 *.log
