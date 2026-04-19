@@ -43,6 +43,14 @@
         .animate-danger-pulse {
             animation: danger-pulse 0.5s infinite;
         }
+
+        @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin-slow {
+            animation: spin-slow 3s linear infinite;
+        }
         
         /* Scrollbar styling */
         .custom-scrollbar::-webkit-scrollbar {

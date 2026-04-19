@@ -343,12 +343,32 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user, attendanceR
                     const todayReq = requests.find(r => r.request_date.split('T')[0] === todayDateStr);
                     if (todayReq) {
                         return (
-                            <div className={`p-3 rounded-xl border flex items-center justify-between ${todayReq.status === 'PENDING' ? 'bg-white border-amber-200 text-amber-600' : 'bg-rose-50 border-rose-100 text-rose-600'}`}>
-                                <div className="flex items-center gap-2">
-                                    <div className={`w-2 h-2 rounded-full animate-pulse ${todayReq.status === 'PENDING' ? 'bg-amber-500' : 'bg-rose-500'}`}></div>
-                                    <span className="text-[10px] font-black uppercase">Status: {todayReq.status}</span>
+                            <div className={`p-4 rounded-2xl border flex flex-col gap-2 ${todayReq.status === 'PENDING' ? 'bg-amber-50/50 border-amber-200' : 'bg-rose-50 border-rose-100'}`}>
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <div className={`w-2.5 h-2.5 rounded-full animate-ping ${todayReq.status === 'PENDING' ? 'bg-amber-500' : 'bg-rose-500'}`}></div>
+                                        <span className={`text-[11px] font-black uppercase tracking-widest ${todayReq.status === 'PENDING' ? 'text-amber-600' : 'text-rose-600'}`}>
+                                            Status: {todayReq.status}
+                                        </span>
+                                    </div>
+                                    <span className="text-[10px] font-black bg-white/50 px-2 py-1 rounded-lg border border-current/10">
+                                        HARI INI
+                                    </span>
                                 </div>
-                                <span className="text-[10px] font-bold italic">{todayReq.status === 'PENDING' ? 'Menunggu Verifikasi...' : 'Ditolak Pimpinan'}</span>
+                                <div className="flex items-center gap-3 mt-1">
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); fetchMyRequests(); }}
+                                        className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-transform active:scale-90 ${todayReq.status === 'PENDING' ? 'bg-amber-100 text-amber-600 hover:bg-amber-200' : 'bg-rose-100 text-rose-600 hover:bg-rose-200'}`}
+                                        title="Refresh Status"
+                                    >
+                                        <RefreshCw size={20} className={todayReq.status === 'PENDING' ? 'animate-spin-slow' : ''} />
+                                    </button>
+                                    <p className={`text-xs font-bold leading-relaxed flex-1 ${todayReq.status === 'PENDING' ? 'text-amber-700' : 'text-rose-700'}`}>
+                                        {todayReq.status === 'PENDING' 
+                                            ? 'Permintaan terkirim. Menunggu approve Staff Kelurahan.' 
+                                            : 'Maaf, permintaan buka absen Anda ditolak oleh Pimpinan.'}
+                                    </p>
+                                </div>
                             </div>
                         );
                     }
@@ -356,9 +376,19 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user, attendanceR
                         <button 
                             onClick={handleRequestOpenAbsen}
                             disabled={isRequesting}
-                            className="w-full py-2 bg-amber-600 hover:bg-amber-700 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg transition-all"
+                            className="group relative w-full overflow-hidden rounded-2xl transition-all active:scale-[0.98]"
                         >
-                            {isRequesting ? 'Mengirim...' : 'Request Buka Absen (Hubungi Pimpinan)'}
+                            <div className="absolute inset-0 bg-gradient-to-r from-amber-500 to-orange-600 transition-transform group-hover:scale-105"></div>
+                            <div className="relative py-4 px-6 flex items-center justify-center gap-3 text-white">
+                                {isRequesting ? (
+                                    <RefreshCw size={18} className="animate-spin" />
+                                ) : (
+                                    <AlertTriangle size={18} className="group-hover:rotate-12 transition-transform" />
+                                )}
+                                <span className="text-[11px] font-black uppercase tracking-[0.15em]">
+                                    {isRequesting ? 'Mengirim Permintaan...' : 'Request Buka Absen (Hubungi Pimpinan)'}
+                                </span>
+                            </div>
                         </button>
                     );
                 })()}

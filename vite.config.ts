@@ -5,9 +5,8 @@ import react from '@vitejs/plugin-react';
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  // Menambahkan base: './' sangat penting untuk hosting seperti Plesk/cPanel
-  // agar file index.html mencari aset (js/css) di folder yang sama, bukan root domain.
-  base: './',
+  // Menggunakan base: '/' agar routing SPA pda sinkron saat refresh di sub-route.
+  base: '/',
   define: {
     // Menyediakan env variable process.env agar kompatibel dengan kode yang ada
     'process.env': process.env
