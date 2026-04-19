@@ -70,6 +70,22 @@
             display: none !important;
             visibility: hidden !important;
         }
+        
+        * {
+            -webkit-tap-highlight-color: transparent;
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e1 #f1f5f9;
+        }
+        
+        body {
+            overscroll-behavior-y: contain;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .safe-bottom {
+            padding-bottom: env(safe-area-inset-bottom);
+        }
     </style>
 <script type="importmap">
 {

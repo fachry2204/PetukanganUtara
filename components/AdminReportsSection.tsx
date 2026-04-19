@@ -345,15 +345,18 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
                      </tbody>
                   </table>
                </div>
-                </div>
 
-                {/* Mobile Card View (Attendance) */}
-                <div className="lg:hidden divide-y divide-slate-100 max-h-[60vh] overflow-y-auto custom-scrollbar">
+               {/* Mobile Card View (Attendance) */}
+               <div className="lg:hidden divide-y divide-slate-100 max-h-[60vh] overflow-y-auto custom-scrollbar">
                   {filteredAttendance.map((rec) => (
                     <div key={rec.id} className="p-5 space-y-4 hover:bg-slate-50/50 transition-colors">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <img src={rec.photo} className="w-12 h-12 rounded-xl object-cover border border-slate-100 shadow-sm" onClick={() => setSelectedPhoto(rec.photo)} />
+                          <img 
+                            src={rec.photo} 
+                            className="w-12 h-12 rounded-xl object-cover border border-slate-100 shadow-sm" 
+                            onClick={() => setSelectedPhoto(rec.photo)} 
+                          />
                           <div>
                             <p className="font-black text-slate-800 uppercase text-xs">{rec.userName}</p>
                             <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase ${
@@ -386,7 +389,7 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
                       </div>
                     </div>
                   ))}
-                </div>
+               </div>
             </div>
          ) : (
             <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
@@ -535,7 +538,7 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
                   <tbody className="divide-y divide-slate-50">
                      {filteredTasks.length === 0 ? (
                         <tr>
-                           <td colSpan={7} className="py-20 text-center text-slate-400">
+                           <td colSpan={9} className="py-20 text-center text-slate-400">
                               <ClipboardList size={48} className="mx-auto mb-3 opacity-20" />
                               <p className="font-bold uppercase tracking-widest text-xs">Belum Ada Riwayat Tugas</p>
                            </td>
@@ -605,10 +608,9 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
                   </tbody>
                </table>
             </div>
-             </div>
 
-             {/* Mobile Card View (Tasks) */}
-             <div className="lg:hidden divide-y divide-slate-100 max-h-[60vh] overflow-y-auto custom-scrollbar">
+            {/* Mobile Card View (Tasks) */}
+            <div className="lg:hidden divide-y divide-slate-100 max-h-[60vh] overflow-y-auto custom-scrollbar">
                {filteredTasks.map((t) => (
                  <div key={t.id} className="p-5 space-y-4 hover:bg-slate-50/50 transition-colors">
                     <div className="flex items-center justify-between">
@@ -639,7 +641,7 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
                     </div>
                  </div>
                ))}
-             </div>
+            </div>
          </div>
       </div>
    );
