@@ -3,7 +3,6 @@ node_modules
 backend/whatsapp_auth/
 backend/.wwebjs_cache/
 backend/scratch/
-dist
 build
 .DS_Store
 *.log
