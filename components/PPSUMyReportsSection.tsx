@@ -55,7 +55,8 @@ const PPSUMyReportsSection: React.FC<PPSUMyReportsSectionProps> = ({ user, tugas
     const groups: Record<string, any> = {};
     
     myRecords.forEach(r => {
-        const date = r.timestamp.split('T')[0];
+        // Use local date for grouping instead of raw UTC string split
+        const date = new Date(r.timestamp).toLocaleDateString('en-CA');
         if (!groups[date]) {
             groups[date] = {
                 date,

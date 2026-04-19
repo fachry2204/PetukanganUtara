@@ -104,7 +104,7 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
       const nik = rec.userNik || '';
       const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase()) || nik.includes(searchTerm);
       const matchesType = filterType === 'ALL' || rec.type === filterType;
-      const recDate = new Date(rec.timestamp).toISOString().split('T')[0];
+      const recDate = new Date(rec.timestamp).toLocaleDateString('en-CA');
       const matchesDate = !filterDate || recDate === filterDate;
       
       // Get Day name for schedule matching
@@ -121,7 +121,7 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
    const groupedTasks = useMemo(() => {
       const groups = new Map();
       tugasList.forEach(t => {
-         const date = new Date(t.timestamp).toISOString().split('T')[0];
+         const date = new Date(t.timestamp).toLocaleDateString('en-CA');
          const key = `${t.reporterNik}-${t.judulTugas}-${date}`;
          if (!groups.has(key)) {
             groups.set(key, t);
@@ -144,7 +144,7 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
          title.toLowerCase().includes(searchTerm.toLowerCase()) ||
          ppsuId.toLowerCase().includes(searchTerm.toLowerCase());
       
-      const taskDate = new Date(t.timestamp).toISOString().split('T')[0];
+      const taskDate = new Date(t.timestamp).toLocaleDateString('en-CA');
       const matchesDate = !filterDate || taskDate === filterDate;
       
       const dayName = new Date(t.timestamp).toLocaleDateString('en-US', { weekday: 'long' });
