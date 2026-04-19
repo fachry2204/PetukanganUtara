@@ -28,6 +28,7 @@ const jadwalRoutes = require('./routes/jadwal');
 const attendanceRequestsRoutes = require('./routes/attendanceRequests');
 const whatsappRoutes = require('./routes/whatsapp');
 const whatsappLogsRoutes = require('./routes/whatsapp_logs');
+const pelanggaranRoutes = require('./routes/pelanggaran');
 
 // API Khusus Waktu Server (Anti-Mock Time)
 app.get('/api/time', (req, res) => {
@@ -46,6 +47,7 @@ app.use('/api/jadwal', jadwalRoutes);
 app.use('/api/attendance-requests', attendanceRequestsRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
 app.use('/api/whatsapp-logs', whatsappLogsRoutes);
+app.use('/api/pelanggaran', pelanggaranRoutes);
 
 // Global Error Handler for better monitoring (Scaling)
 app.use((err, req, res, next) => {

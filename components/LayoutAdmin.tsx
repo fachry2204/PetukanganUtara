@@ -85,6 +85,7 @@ const LayoutAdmin: React.FC<LayoutAdminProps> = ({
         { id: 'tugas', label: 'Data Tugas PPSU', icon: <ClipboardList size={20} />, color: 'bg-purple-500' },
         { id: 'jadwal', label: 'Jadwal PPSU', icon: <Calendar size={20} />, color: 'bg-cyan-500' },
         { id: 'report', label: 'Report', icon: <FileText size={20} />, color: 'bg-rose-500' },
+        { id: 'pelanggaran', label: 'Log Pelanggaran', icon: <ShieldCheck size={20} />, color: 'bg-red-600' },
       ]
     },
     {

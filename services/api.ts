@@ -100,5 +100,10 @@ export const apiService = {
     logoutWa: () => postData('/whatsapp/logout', {}),
     getWaLogs: (): Promise<any[]> => fetchData('/whatsapp-logs'),
     retryWaMessage: (id: string) => postData(`/whatsapp-logs/retry/${id}`, {}),
-    clearWaLogs: () => fetch(`${API_BASE_URL}/whatsapp-logs`, { method: 'DELETE' }).then(r => r.json())
+    clearWaLogs: () => fetch(`${API_BASE_URL}/whatsapp-logs`, { method: 'DELETE' }).then(r => r.json()),
+
+    // --- PELANGGARAN ---
+    getViolations: (): Promise<any[]> => fetchData('/pelanggaran'),
+    logViolation: (violation: any) => postData('/pelanggaran', violation),
+    deleteViolation: (id: number) => fetch(`${API_BASE_URL}/pelanggaran/${id}`, { method: 'DELETE' }).then(r => r.json())
 };

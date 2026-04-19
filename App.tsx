@@ -37,6 +37,8 @@ import PPSUTaskInputSection from './components/PPSUTaskInputSection';
 import PPSUMyReportsSection from './components/PPSUMyReportsSection';
 import ScheduleManagementSection from './components/ScheduleManagementSection';
 import WhatsAppLogsSection from './components/WhatsAppLogsSection';
+import SecurityGuard from './components/SecurityGuard';
+import ViolationSection from './components/ViolationSection';
 
 const loadData = <T,>(key: string, fallback: T): T => {
   try {
@@ -209,7 +211,7 @@ const App: React.FC = () => {
   const isPPSU = currentUser && currentUser.role === 'PPSU';
 
   return (
-    <>
+    <SecurityGuard user={currentUser}>
       <Routes>
         <Route path="/login" element={
             currentUser ? 
@@ -248,6 +250,7 @@ const App: React.FC = () => {
             <Route path="report" element={<AdminReportsSection mode="FULL_REPORT" attendanceRecords={attendanceRecords} tugasList={tugasList} user={currentUser!} users={users} staff={staffList} settings={settings} schedules={schedules} />} />
             <Route path="users" element={<UserManagementSection users={users} setUsers={setUsers} initialTab="SEMUA" />} />
             <Route path="wa-logs" element={<WhatsAppLogsSection />} />
+            <Route path="pelanggaran" element={<ViolationSection />} />
             <Route path="map" element={
               <MapSection 
                 tugasList={tugasList} 
@@ -350,7 +353,7 @@ const App: React.FC = () => {
             </div>
          </div>
       )}
-    </>
+    </SecurityGuard>
   );
 };
 
