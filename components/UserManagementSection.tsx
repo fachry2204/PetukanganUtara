@@ -22,9 +22,7 @@ import {
   Settings,
   ShieldCheck,
   UserCog,
-  HardHat,
-  UsersRound,
-  MoreHorizontal
+  HardHat
 } from 'lucide-react';
 import { User, Role } from '../types';
 import AdminVerificationModal from './AdminVerificationModal';
@@ -53,7 +51,7 @@ interface PendingAction {
   user: User;
 }
 
-type CategoryTab = 'SEMUA' | 'MANAJEMEN' | 'STAFF' | 'PPSU' | 'LAINNYA';
+type CategoryTab = 'SEMUA' | 'MANAJEMEN' | 'STAFF' | 'PPSU';
 
 const UserManagementSection: React.FC<UserManagementSectionProps> = ({ users, setUsers, initialTab = 'SEMUA' }) => {
   const [activeTab, setActiveTab] = useState<CategoryTab>(initialTab);
@@ -95,8 +93,6 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({ users, se
         return users.filter(u => ['Staff Kelurahan', 'Operator'].includes(u.role));
       case 'PPSU':
         return users.filter(u => u.role === 'PPSU');
-      case 'LAINNYA':
-        return users.filter(u => ['POSYANDU', 'PKK', 'Karang Taruna'].includes(u.role));
       default:
         return users;
     }
@@ -246,8 +242,7 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({ users, se
     { id: 'SEMUA', label: 'Semua User', icon: <LayoutGrid size={16}/> },
     { id: 'MANAJEMEN', label: 'Manajemen', icon: <ShieldCheck size={16}/> },
     { id: 'STAFF', label: 'Staff & Operator', icon: <Settings size={16}/> },
-    { id: 'PPSU', label: 'PPSU', icon: <HardHat size={16}/> },
-    { id: 'LAINNYA', label: 'Lembaga', icon: <MoreHorizontal size={16}/> }
+    { id: 'PPSU', label: 'PPSU', icon: <HardHat size={16}/> }
   ];
 
   return (
@@ -281,8 +276,7 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({ users, se
                 {tab.id === 'SEMUA' ? users.length : 
                  tab.id === 'MANAJEMEN' ? users.filter(u => ['Administrator', 'Pimpinan', 'Admin'].includes(u.role)).length :
                  tab.id === 'STAFF' ? users.filter(u => ['Staff Kelurahan', 'Operator'].includes(u.role)).length :
-                 tab.id === 'PPSU' ? users.filter(u => u.role === 'PPSU').length :
-                 users.filter(u => ['POSYANDU', 'PKK', 'Karang Taruna'].includes(u.role)).length}
+                 users.filter(u => u.role === 'PPSU').length}
              </span>
            </button>
          ))}

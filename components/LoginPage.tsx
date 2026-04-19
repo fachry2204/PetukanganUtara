@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { User, Lock, Eye, EyeOff, LogIn, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { User as UserType, SystemSettings } from '../types';
+import { apiService } from '../services/api';
 
 interface LoginPageProps {
   onLogin: (user: UserType) => void;
@@ -16,33 +17,28 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, settings, users }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
 
-    // Simulate Network Delay
-    setTimeout(() => {
-      // Logic Update: Search in the passed 'users' prop (which contains generated citizens)
-      const user = users.find(u =>
-        (u.username.toLowerCase() === identifier.toLowerCase()) ||
-        (u.email && u.email.toLowerCase() === identifier.toLowerCase()) ||
-        (u.nik && u.nik === identifier)
-      );
-
-      if (user) {
-        if (user.password === password) {
-          setIsLoading(false);
-          onLogin(user);
-        } else {
-          setIsLoading(false);
-          setError('Password salah. Silakan coba lagi.');
-        }
-      } else {
-        setIsLoading(false);
+    try {
+      // Panggil API Backend untuk login (Database verification)
+      const user = await apiService.login(identifier, password);
+      
+      setIsLoading(false);
+      onLogin(user);
+    } catch (err: any) {
+      setIsLoading(false);
+      // Tangani error dari backend
+      if (err.message.includes('404')) {
         setError('Pengguna tidak ditemukan. Periksa Username/NIK Anda.');
+      } else if (err.message.includes('401')) {
+        setError('Password salah. Silakan coba lagi.');
+      } else {
+        setError('Terjadi kesalahan koneksi ke server.');
       }
-    }, 1000);
+    }
   };
 
   return (

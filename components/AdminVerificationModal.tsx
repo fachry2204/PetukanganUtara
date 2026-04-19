@@ -1,7 +1,7 @@
-
 import React, { useState } from 'react';
 import { X, ShieldCheck, Lock, UserCircle, AlertTriangle } from 'lucide-react';
 import { User } from '../types';
+import { apiService } from '../services/api';
 
 interface AdminVerificationModalProps {
   isOpen: boolean;
@@ -27,46 +27,36 @@ const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setIsVerifying(true);
 
-    // Simulate network delay
-    setTimeout(() => {
-      // 1. Find User by Username, Email, OR NIK
-      const adminUser = users.find(u => 
-        u.username.toLowerCase() === identifier.toLowerCase() || 
-        (u.email && u.email.toLowerCase() === identifier.toLowerCase()) ||
-        (u.nik && u.nik === identifier)
-      );
+    try {
+      // 1. Verifikasi dengan backend (Database check)
+      const adminUser = await apiService.login(identifier, password);
 
-      // 2. Validate User Existence
-      if (!adminUser) {
-        setError('User tidak ditemukan dalam sistem.');
-        setIsVerifying(false);
-        return;
-      }
-
-      // 3. Validate Role Permissions
+      // 2. Cek izin role
       const allowedRoles = ['Administrator', 'Admin', 'Pimpinan', 'Staff Kelurahan'];
       if (!allowedRoles.includes(adminUser.role)) {
-        setError(`Role '${adminUser.role}' tidak memiliki izin untuk melakukan aksi ini.`);
+        setError(`Akses Ditolak: Role '${adminUser.role}' tidak memiliki izin untuk melakukan aksi ini.`);
         setIsVerifying(false);
         return;
       }
 
-      // 4. Validate Password
-      if (adminUser.password !== password) {
-        setError('Password salah.');
-        setIsVerifying(false);
-        return;
-      }
-
-      // Success
+      // Berhasil
       setIsVerifying(false);
       onSuccess();
-    }, 800);
+    } catch (err: any) {
+        setIsVerifying(false);
+        if (err.message.includes('404')) {
+            setError('User tidak ditemukan dalam sistem.');
+        } else if (err.message.includes('401')) {
+            setError('Password salah.');
+        } else {
+            setError('Terjadi kesalahan koneksi ke server.');
+        }
+    }
   };
 
   const getColorTheme = () => {

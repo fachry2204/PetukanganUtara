@@ -63,6 +63,7 @@ export const apiService = {
     createUser: (user: User) => postData('/users', user),
     updateUser: (user: User) => putData(`/users/${user.id}`, user),
     deleteUser: (id: string) => fetch(`${(import.meta as any).env.VITE_API_URL || 'http://localhost:5000/api'}/users/${id}`, { method: 'DELETE' }).then(r => r.json()),
+    login: (identifier: string, password: string): Promise<User> => postData('/users/login', { identifier, password }),
 
     // --- ATTENDANCE ---
     getAttendance: (): Promise<any[]> => fetchData('/attendance'),

@@ -1,5 +1,5 @@
 const db = require('./db');
-
+const bcrypt = require('bcryptjs');
 
 // Mock data patterns matching the frontend types
 const MOCK_USERS = [
@@ -23,8 +23,9 @@ async function seed() {
 
         // Seed Users
         for (const u of MOCK_USERS) {
+            const hashedPassword = await bcrypt.hash(u.password, 10);
             await db.query('INSERT IGNORE INTO users (id, username, name, email, nik, role, avatar, password) VALUES (?,?,?,?,?,?,?,?)', 
-            [u.id, u.username, u.name, u.email, u.nik, u.role, u.avatar, u.password]);
+            [u.id, u.username, u.name, u.email, u.nik, u.role, u.avatar, hashedPassword]);
         }
 
         // Seed Staff
