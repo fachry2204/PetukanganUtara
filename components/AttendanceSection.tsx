@@ -291,7 +291,7 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user, attendanceR
             id: Date.now().toString(),
             staffId: user.id || 'unknown',
             type: attendanceType,
-            timestamp: timeToPrint.toISOString(),
+            timestamp: timeToPrint.toISOString(), // Biarkan driver DB yang konversi ke +07:00
             latitude: location.lat,
             longitude: location.lng,
             photoUrl: imageSrc,

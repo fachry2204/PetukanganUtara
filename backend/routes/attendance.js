@@ -31,7 +31,7 @@ router.post('/', async (req, res) => {
     try {
         // Prevent double attendance for same schedule and date
         if (a.jadwalId) {
-            const today = new Date().toISOString().split('T')[0];
+            const today = new Date(new Date().getTime() + 7 * 3600000).toISOString().split('T')[0];
             const [existing] = await db.query(
                 'SELECT id FROM attendance WHERE staff_id = ? AND type = ? AND jadwal_id = ? AND DATE(timestamp) = ?',
                 [a.staffId, a.type, a.jadwalId, today]
