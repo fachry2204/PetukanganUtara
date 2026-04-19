@@ -30,6 +30,8 @@ const MapSection: React.FC<MapSectionProps> = ({ tugasList, setTugasList, staffL
   
   // FILTER STATE - Default to ALL
   const [mapFilter, setMapFilter] = useState<string>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredStaffId, setFilteredStaffId] = useState<string | null>(null);
 
   // Base Data Processing - Mark those in SOS as "Dalam Bahaya"
   // FILTER: Only show staff who have clocked in today and NOT clocked out
@@ -80,6 +82,15 @@ const MapSection: React.FC<MapSectionProps> = ({ tugasList, setTugasList, staffL
         });
   }, [staffList, sosAlerts, attendanceRecords]);
 
+  // Filter based on Search Query
+  const searchedStaff = useMemo(() => {
+    if (!searchQuery) return activeStaff;
+    return activeStaff.filter(s => 
+        s.namaLengkap.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        s.nik.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [activeStaff, searchQuery]);
+
   // Counts for Legend
   const stats = useMemo(() => ({
     online: activeStaff.length,
@@ -90,15 +101,22 @@ const MapSection: React.FC<MapSectionProps> = ({ tugasList, setTugasList, staffL
 
   // Filtered Data for Map Markers
   const displayedStaff = useMemo(() => {
-    if (mapFilter === 'ALL') return activeStaff;
-    if (mapFilter === 'ONLINE') return activeStaff; 
-    return activeStaff.filter(s => s.status === mapFilter);
-  }, [activeStaff, mapFilter]);
+    // If a specific staff is filtered (clicked from list), show only that one
+    if (filteredStaffId) {
+        return activeStaff.filter(s => s.id === filteredStaffId);
+    }
+
+    let base = searchedStaff;
+    if (mapFilter === 'ALL') return base;
+    if (mapFilter === 'ONLINE') return base; 
+    return base.filter(s => s.status === mapFilter);
+  }, [searchedStaff, activeStaff, mapFilter, filteredStaffId]);
 
   // For Bottom List
-  const onlineList = displayedStaff;
+  const onlineList = searchedStaff;
 
   const toggleFilter = (status: string) => {
+    setFilteredStaffId(null); // Reset isolation when switching status filter
     if (mapFilter === status) {
         setMapFilter('ALL'); 
     } else {
@@ -240,6 +258,7 @@ const MapSection: React.FC<MapSectionProps> = ({ tugasList, setTugasList, staffL
 
   const handleLocate = (staff: Staff) => {
     setSelectedStaff(staff);
+    setFilteredStaffId(staff.id); // Isolate this staff on the map
     if (mapInstanceRef.current) {
         mapInstanceRef.current.flyTo([staff.latitude, staff.longitude], 18, {
             animate: true,
@@ -421,11 +440,8 @@ const MapSection: React.FC<MapSectionProps> = ({ tugasList, setTugasList, staffL
 
       {/* Bottom List Section - Resizable */}
       <div className={`bg-white border-t border-slate-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] flex flex-col shrink-0 transition-all duration-300 ease-in-out ${isListMinimized ? 'h-14' : 'h-80'} z-[1001]`}>
-          <div 
-            className="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center cursor-pointer hover:bg-slate-100 transition-colors"
-            onClick={() => setIsListMinimized(!isListMinimized)}
-          >
-             <div className="flex items-center gap-4">
+          <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+             <div className="flex items-center gap-4 cursor-pointer" onClick={() => setIsListMinimized(!isListMinimized)}>
                 <button className="text-slate-400">
                     {isListMinimized ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                 </button>
@@ -434,9 +450,44 @@ const MapSection: React.FC<MapSectionProps> = ({ tugasList, setTugasList, staffL
                    {!isListMinimized && <p className="text-[9px] text-slate-500 font-normal">Pilih anggota untuk melacak lokasi terkini.</p>}
                 </div>
              </div>
-             <span className="text-[10px] font-medium bg-indigo-50 text-indigo-700 px-3 py-1 rounded-lg border border-indigo-100">
-                {onlineList.length} Personil
-             </span>
+
+             {!isListMinimized && (
+                <div className="flex-1 max-w-md">
+                   <div className="relative group">
+                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-indigo-500 transition-colors">
+                         <MapPin size={14} />
+                      </div>
+                      <input 
+                         type="text" 
+                         placeholder="Cari Nama Anggota PPSU..."
+                         value={searchQuery}
+                         onChange={(e) => {
+                            setSearchQuery(e.target.value);
+                            setFilteredStaffId(null);
+                         }}
+                         className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-[11px] font-bold outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-inner"
+                      />
+                   </div>
+                </div>
+             )}
+
+             <div className="flex items-center gap-2">
+                {filteredStaffId && (
+                   <button 
+                      onClick={(e) => {
+                         e.stopPropagation();
+                         setFilteredStaffId(null);
+                         setMapFilter('ALL');
+                      }}
+                      className="text-[9px] font-black text-rose-600 bg-rose-50 px-3 py-1.5 rounded-lg uppercase tracking-tight hover:bg-rose-600 hover:text-white transition-all shadow-sm"
+                   >
+                      Reset Filter
+                   </button>
+                )}
+                <span className="text-[10px] font-medium bg-indigo-50 text-indigo-700 px-3 py-1 rounded-lg border border-indigo-100 whitespace-nowrap">
+                   {onlineList.length} Personil
+                </span>
+             </div>
           </div>
           
           <div className="flex-1 overflow-y-auto p-4 custom-scrollbar bg-white">
