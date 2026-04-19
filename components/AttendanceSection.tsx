@@ -286,12 +286,16 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user, attendanceR
         setPhoto(imageSrc);
         setSubmittedTime(timeToPrint); // Freeze attendance time
         
-        // Simpan marker absensi ke Database
+        // Simpan marker absensi ke Database (Manual Offset agar akurat di DB & Display)
+        const tzOffset = 7 * 60 * 60 * 1000; // WIB
+        const localTime = new Date(timeToPrint.getTime() + tzOffset);
+        const localTimeStr = localTime.toISOString().slice(0, 19).replace('T', ' ');
+
         const newRecord = {
             id: Date.now().toString(),
             staffId: user.id || 'unknown',
             type: attendanceType,
-            timestamp: timeToPrint.toISOString(), // Biarkan driver DB yang konversi ke +07:00
+            timestamp: localTimeStr, // Kirim format lokal YYYY-MM-DD HH:mm:ss
             latitude: location.lat,
             longitude: location.lng,
             photoUrl: imageSrc,

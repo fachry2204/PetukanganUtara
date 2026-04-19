@@ -11,8 +11,7 @@ const pool = mysql.createPool({
   database: process.env.DB_NAME || 'sipetut_db',
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0,
-  timezone: '+07:00'
+  queueLimit: 0
 });
 
 // Test koneksi
