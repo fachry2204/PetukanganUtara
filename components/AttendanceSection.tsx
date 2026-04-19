@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Camera, MapPin, RefreshCw, CheckCircle2, AlertTriangle, User, History as HistoryIcon } from 'lucide-react';
+import { Camera, MapPin, RefreshCw, CheckCircle2, AlertTriangle, User, History as HistoryIcon, Clock } from 'lucide-react';
 import { User as UserType, AttendanceRecord, AttendanceType, SystemSettings } from '../types';
 import LocationMiniMap from './LocationMiniMap';
 import { apiService } from '../services/api';
@@ -131,14 +131,35 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user, attendanceR
     else if (!hasCheckedOut) setAttendanceType('Absen Pulang');
   }, [hasCheckedIn, hasIstirahat, hasSelesaiIstirahat, hasCheckedOut]);
 
-  // Update real-time clock independently of the device time via offset
+  // Sync Server Time on Mount
   useEffect(() => {
-    if (timeOffset !== null) {
-      const interval = setInterval(() => {
-        setCurrentTime(new Date(Date.now() + timeOffset));
-      }, 1000);
-      return () => clearInterval(interval);
-    }
+    const syncTime = async () => {
+      try {
+        const res = await fetch('/api/time');
+        const data = await res.json();
+        const serverDate = new Date(data.datetime);
+        const offset = serverDate.getTime() - Date.now();
+        setTimeOffset(offset);
+        setCurrentTime(new Date(Date.now() + offset));
+        setIsSecure(true);
+      } catch (err) {
+        setTimeOffset(0);
+        setCurrentTime(new Date());
+        setIsSecure(false);
+        console.warn("Gagal sinkron waktu server, menggunakan waktu lokal.");
+      }
+    };
+    syncTime();
+  }, []);
+
+  // Update real-time clock every second
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // If we don't have offset yet, just use local time so it's not blank
+      const offset = timeOffset || 0;
+      setCurrentTime(new Date(Date.now() + offset));
+    }, 1000);
+    return () => clearInterval(interval);
   }, [timeOffset]);
 
   // Stop camera when unmounting or changing steps
@@ -223,28 +244,8 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user, attendanceR
         videoRef.current.srcObject = mediaStream;
       }
       
-      // Enforce Server Time
-      if (security.enforceServerTime) {
-          fetch('/api/time')
-            .then(res => res.json())
-            .then(data => {
-                const serverDate = new Date(data.datetime);
-                const offset = serverDate.getTime() - Date.now();
-                setTimeOffset(offset);
-                setCurrentTime(new Date(Date.now() + offset));
-                setIsSecure(true);
-            })
-            .catch(() => {
-               setTimeOffset(0);
-               setCurrentTime(new Date());
-               setIsSecure(false);
-               console.warn("Gagal sinkron waktu server, menggunakan waktu lokal.");
-            });
-      } else {
-          setTimeOffset(0);
-          setCurrentTime(new Date());
-          setIsSecure(true);
-      }
+      // Server time is already synced on mount, no need to re-fetch unless desired
+      // But we can verify it here if needed.
     } catch (err) {
       setError('Gagal mengakses kamera. Izin ditolak atau perangkat tidak tersedia.');
       setStep('idle');
@@ -373,7 +374,38 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user, attendanceR
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-2xl mx-auto space-y-4">
+      {/* REAL-TIME SERVER CLOCK WIDGET */}
+      <div className="bg-white px-6 py-4 rounded-3xl shadow-sm border border-slate-100 flex items-center justify-between overflow-hidden relative">
+         <div className="absolute left-0 top-0 w-1.5 h-full bg-orange-500"></div>
+         <div className="flex flex-col">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-0.5 ml-0.5">Waktu Server (WIB)</p>
+            <div className="flex items-baseline gap-2">
+               <h3 className="text-3xl font-black text-slate-800 tracking-tight leading-none">
+                  {currentTime ? currentTime.toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit' }).replace(/\./g, ':') : '--:--'}
+               </h3>
+               <div className="flex flex-col">
+                  <span className="text-[12px] font-black text-orange-500 leading-none mb-0.5">
+                     {currentTime ? currentTime.toLocaleTimeString('id-ID', { second: '2-digit' }) : '00'}
+                  </span>
+                  <div className="flex items-center gap-1">
+                     <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
+                     <span className="text-[8px] font-black text-emerald-600 uppercase">Live</span>
+                  </div>
+               </div>
+            </div>
+         </div>
+         <div className="flex flex-col items-end text-right">
+            <span className="text-[11px] font-black text-slate-800 uppercase tracking-tight">
+               {currentTime ? currentTime.toLocaleDateString('id-ID', { weekday: 'long' }) : '---'}
+            </span>
+            <span className="text-[18px] font-black text-slate-400 uppercase tracking-tighter -mt-1">
+               {currentTime ? currentTime.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-') : '--/--/----'}
+            </span>
+         </div>
+         <Clock size={40} className="absolute -right-4 -bottom-4 text-slate-50 rotate-12" />
+      </div>
+
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
         <h2 className="text-xl font-bold text-slate-800 mb-1">Absensi Harian PPSU</h2>
         {activeSchedule ? (
