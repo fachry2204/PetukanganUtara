@@ -54,7 +54,10 @@ const PPSUMyReportsSection: React.FC<PPSUMyReportsSectionProps> = ({ user, tugas
     // Group by Date
     const groups: Record<string, any> = {};
     
-    myRecords.forEach(r => {
+    // Sort records by timestamp ASC to ensure logic order (Masuk -> Pulang)
+    const sortedRecords = [...myRecords].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    
+    sortedRecords.forEach(r => {
         // Use local date for grouping instead of raw UTC string split
         const date = new Date(r.timestamp).toLocaleDateString('en-CA');
         if (!groups[date]) {
