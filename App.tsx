@@ -39,6 +39,8 @@ import ScheduleManagementSection from './components/ScheduleManagementSection';
 import WhatsAppLogsSection from './components/WhatsAppLogsSection';
 import SecurityGuard from './components/SecurityGuard';
 import ViolationSection from './components/ViolationSection';
+import InstallPromptModal from './components/InstallPromptModal';
+import GpsTracker from './components/GpsTracker';
 
 const loadData = <T,>(key: string, fallback: T): T => {
   try {
@@ -210,8 +212,19 @@ const App: React.FC = () => {
   const isAdmin = currentUser && currentUser.role !== 'PPSU';
   const isPPSU = currentUser && currentUser.role === 'PPSU';
 
+  const today = new Date().toLocaleDateString('en-CA');
+  const userTodayRecords = attendanceRecords.filter(r => 
+    r.userNik === currentUser?.nik && 
+    new Date(r.timestamp).toLocaleDateString('en-CA') === today
+  );
+  const isUserOnDuty: boolean = !!(isPPSU && 
+    userTodayRecords.some(r => r.type === 'Absen Masuk') && 
+    !userTodayRecords.some(r => r.type === 'Absen Pulang'));
+
   return (
     <SecurityGuard user={currentUser}>
+      <InstallPromptModal logo={settings.logo} />
+      <GpsTracker user={currentUser} isOnDuty={isUserOnDuty} />
       <Routes>
         <Route path="/login" element={
             currentUser ? 
