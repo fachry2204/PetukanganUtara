@@ -80,14 +80,16 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
     const { id } = req.params;
     const u = req.body;
+    const connection = await db.getConnection();
     try {
+        await connection.beginTransaction();
+
         let sql = `
             UPDATE users SET 
             username = ?, name = ?, email = ?, nik = ?, role = ?, avatar = ?
         `;
         const params = [u.username, u.name, u.email, u.nik, u.role, u.avatar];
 
-        // Jika password diisi, hash dan tambahkan ke query
         if (u.password && u.password.trim() !== '') {
             const hashedPassword = await bcrypt.hash(u.password, 10);
             sql += `, password = ?`;
@@ -97,23 +99,57 @@ router.put('/:id', async (req, res) => {
         sql += ` WHERE id = ?`;
         params.push(id);
 
-        await db.query(sql, params);
+        await connection.query(sql, params);
+
+        // Sync with staff table if nik exists
+        if (u.nik) {
+            const sqlStaff = `
+                UPDATE staff SET 
+                nama_lengkap = ?, foto_profile = ?
+                WHERE nik = ?
+            `;
+            await connection.query(sqlStaff, [u.name, u.avatar, u.nik]);
+        }
+
+        await connection.commit();
         cache.del('all_users');
-        res.json({ message: 'User updated' });
+        res.json({ message: 'User and Staff updated' });
     } catch (err) {
+        await connection.rollback();
         res.status(500).json({ error: err.message });
+    } finally {
+        connection.release();
     }
 });
 
 // DELETE USER
 router.delete('/:id', async (req, res) => {
     const { id } = req.params;
+    const connection = await db.getConnection();
     try {
-        await db.query('DELETE FROM users WHERE id = ?', [id]);
+        await connection.beginTransaction();
+
+        // Get NIK before deleting user
+        const [userRows] = await connection.query('SELECT nik FROM users WHERE id = ?', [id]);
+        if (userRows.length > 0) {
+            const nik = userRows[0].nik;
+            if (nik) {
+                // Delete from staff table
+                await connection.query('DELETE FROM staff WHERE nik = ?', [nik]);
+            }
+        }
+
+        // Delete from users table
+        await connection.query('DELETE FROM users WHERE id = ?', [id]);
+
+        await connection.commit();
         cache.del('all_users');
-        res.json({ message: 'User deleted' });
+        res.json({ message: 'User and associated Staff deleted' });
     } catch (err) {
+        await connection.rollback();
         res.status(500).json({ error: err.message });
+    } finally {
+        connection.release();
     }
 });
 
