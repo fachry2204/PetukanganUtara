@@ -70,22 +70,27 @@ app.use((req, res, next) => {
     next();
 });
 
-// Path ke folder root (karena isi dist akan dipindah ke root hosting)
-const distPath = path.join(__dirname, '..');
+// Path ke folder public (hasil build Vite)
+const distPath = path.join(__dirname, '..', 'public');
 
 if (fs.existsSync(distPath)) {
-    // Sajikan file statis dari folder dist
+    // Sajikan file statis dari folder public
     app.use(express.static(distPath));
 
     // Handle SPA (Single Page Application) - kirim index.html untuk semua route yang tidak terdaftar di API
     app.get('*', (req, res) => {
         if (!req.path.startsWith('/api')) {
-            res.sendFile(path.join(distPath, 'index.html'));
+            const indexFile = path.join(distPath, 'index.html');
+            if (fs.existsSync(indexFile)) {
+                res.sendFile(indexFile);
+            } else {
+                res.status(404).send('Aplikasi tidak ditemukan (index.html missing).');
+            }
         }
     });
-    console.log('✅ Frontend dist detected and serving.');
+    console.log('✅ Frontend public folder detected and serving.');
 } else {
-    console.log('⚠️ Frontend dist folder not found. Only API is active.');
+    console.log('⚠️ Frontend public folder not found. Only API is active.');
 }
 
 // Start Server
