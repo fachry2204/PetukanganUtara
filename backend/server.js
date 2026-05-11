@@ -61,8 +61,17 @@ app.use((err, req, res, next) => {
 const path = require('path');
 const fs = require('fs');
 
-// Path ke folder dist (asumsi dist ada di root project, sejajar dengan folder backend)
-const distPath = path.join(__dirname, '../dist');
+// --- SECURITY: Block access to sensitive files --- //
+app.use((req, res, next) => {
+    const forbidden = ['.env', 'backend', 'node_modules', '.git', 'package.json', 'package-lock.json'];
+    if (forbidden.some(p => req.path.toLowerCase().includes(p.toLowerCase()))) {
+        return res.status(403).json({ error: 'Forbidden: Access Denied for security reasons.' });
+    }
+    next();
+});
+
+// Path ke folder root (karena isi dist akan dipindah ke root hosting)
+const distPath = path.join(__dirname, '..');
 
 if (fs.existsSync(distPath)) {
     // Sajikan file statis dari folder dist

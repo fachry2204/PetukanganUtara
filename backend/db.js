@@ -1,7 +1,6 @@
 const mysql = require('mysql2');
 const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '../.env') });
-require('dotenv').config(); // Fallback to current directory .env if root not enough
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 // Buat koneksi pool agar lebih efisien
 const pool = mysql.createPool({
