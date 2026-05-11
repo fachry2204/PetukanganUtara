@@ -127,12 +127,21 @@ const SecurityGuard: React.FC<SecurityGuardProps> = ({ user, children }) => {
                 <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-10">Mempersiapkan Lingkungan Kerja Aman</p>
                 
                 {status === 'IDLE' && (
-                    <button 
-                        onClick={checkSecurity}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-10 py-5 rounded-[2.5rem] font-black uppercase tracking-widest text-[11px] shadow-2xl transition-all active:scale-95 flex items-center gap-3"
-                    >
-                        Mulai Verifikasi <ShieldCheck size={18} />
-                    </button>
+                    <div className="flex flex-col items-center gap-4">
+                        <button 
+                            onClick={checkSecurity}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white px-10 py-5 rounded-[2.5rem] font-black uppercase tracking-widest text-[11px] shadow-2xl transition-all active:scale-95 flex items-center gap-3"
+                        >
+                            Mulai Verifikasi <ShieldCheck size={18} />
+                        </button>
+                        
+                        <button 
+                            onClick={() => { localStorage.removeItem('app_session'); window.location.reload(); }}
+                            className="text-slate-500 hover:text-white text-[10px] font-bold uppercase tracking-widest transition-colors"
+                        >
+                            Ganti Akun / Logout
+                        </button>
+                    </div>
                 )}
             </div>
         );
