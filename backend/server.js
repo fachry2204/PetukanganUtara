@@ -6,7 +6,7 @@ const db = require('./db');
 const waService = require('./services/whatsappService');
 
 // Initialize WA Service
-waService.init();
+// waService.init(); // Matikan sementara untuk tes di hosting agar tidak berat/error di hosting
 
 const app = express();
 const PORT = process.env.PORT || 5000;
