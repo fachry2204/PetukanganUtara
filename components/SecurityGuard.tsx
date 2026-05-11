@@ -111,6 +111,11 @@ const SecurityGuard: React.FC<SecurityGuardProps> = ({ user, children }) => {
         }
     }, [status]);
 
+    // Jika user belum login, lewati validasi keamanan agar bisa masuk ke halaman login
+    if (!user) {
+        return <>{children}</>;
+    }
+
     if (status === 'IDLE' || status === 'CHECKING') {
         return (
             <div className="fixed inset-0 bg-slate-900 flex flex-col items-center justify-center p-10 text-center text-white z-[9999]">
