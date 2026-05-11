@@ -7,13 +7,15 @@ export default defineConfig({
   plugins: [react()],
   // Menggunakan base: '/' agar routing SPA pda sinkron saat refresh di sub-route.
   base: '/',
+  publicDir: 'static_assets',
   define: {
     // Menyediakan env variable process.env agar kompatibel dengan kode yang ada
     'process.env': process.env
   },
   build: {
-    outDir: 'dist',
+    outDir: 'public',
     sourcemap: false,
+    emptyOutDir: true,
     rollupOptions: {
       output: {
         manualChunks: {
