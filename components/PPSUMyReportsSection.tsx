@@ -18,18 +18,24 @@ const PPSUMyReportsSection: React.FC<PPSUMyReportsSectionProps> = ({ user, tugas
   const [fullscreenMap, setFullscreenMap] = useState<{lat: number, lng: number} | null>(null);
 
   const renderAttendanceThumbnails = (stageData: any, typeName: string, colorClass: string) => {
-      if (!stageData || !stageData.photo) return null;
+      if (!stageData) return null;
       return (
          <div className="flex gap-2 ml-auto shrink-0">
-             <button 
-                 onClick={(e) => { e.stopPropagation(); setFullscreenImage(stageData.photo) }}
-                 className={`w-12 h-12 rounded-lg border-2 ${colorClass} overflow-hidden bg-slate-100 relative group transition-transform hover:scale-105 shadow-sm`}
-             >
-                 <img src={stageData.photo} alt={typeName} className="w-full h-full object-cover" />
-                 <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                     <Camera size={16} className="text-white drop-shadow-md" />
-                 </div>
-             </button>
+             {stageData.photo ? (
+                <button 
+                    onClick={(e) => { e.stopPropagation(); setFullscreenImage(stageData.photo) }}
+                    className={`w-12 h-12 rounded-lg border-2 ${colorClass} overflow-hidden bg-slate-100 relative group transition-transform hover:scale-105 shadow-sm`}
+                >
+                    <img src={stageData.photo} alt={typeName} className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <Camera size={16} className="text-white drop-shadow-md" />
+                    </div>
+                </button>
+             ) : (
+                <div className={`w-12 h-12 rounded-lg border-2 ${colorClass} bg-slate-50 flex items-center justify-center text-slate-300 shadow-sm shrink-0`}>
+                    <Camera size={16} />
+                </div>
+             )}
              {stageData.lat && stageData.lng && (
                  <button 
                      onClick={(e) => { e.stopPropagation(); setFullscreenMap({ lat: parseFloat(stageData.lat), lng: parseFloat(stageData.lng) }) }}

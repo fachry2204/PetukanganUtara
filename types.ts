@@ -150,5 +150,5 @@ export interface AttendanceRecord {
   latitude: number;
   longitude: number;
   address: string;
-  photo: string;
+  photo: string | null;
 }

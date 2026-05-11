@@ -175,6 +175,85 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user, attendanceR
     };
   }, [stream]);
 
+  const isBreakType = attendanceType === 'Istirahat' || attendanceType === 'Selesai Istirahat';
+
+  const submitAttendance = async (photoUrl: string | null) => {
+    if (!location) return;
+
+    const timeToPrint = currentTime || new Date();
+    setSubmittedTime(timeToPrint); // Freeze attendance time
+    
+    // Simpan marker absensi ke Database (Manual Offset agar akurat di DB & Display)
+    const tzOffset = 7 * 60 * 60 * 1000; // WIB
+    const localTime = new Date(timeToPrint.getTime() + tzOffset);
+    const localTimeStr = localTime.toISOString().slice(0, 19).replace('T', ' ');
+
+    const newRecord = {
+        id: Date.now().toString(),
+        staffId: user.id || 'unknown',
+        type: attendanceType,
+        timestamp: localTimeStr, // Kirim format lokal YYYY-MM-DD HH:mm:ss
+        latitude: location.lat,
+        longitude: location.lng,
+        photoUrl: photoUrl,
+        nik: user.nik || 'unknown',
+        staffName: user.name || user.username || 'unknown',
+        address: address,
+        jadwalId: activeSchedule?.id || null
+    };
+
+    try {
+      await apiService.createAttendance(newRecord);
+    } catch (err: any) {
+        console.error("API Attendance Error:", err);
+        if (err.response?.data?.error) {
+            alert(err.response.data.error);
+            setStep('idle');
+            return;
+        }
+    }
+    
+    if (attendanceType === 'Istirahat') {
+        localStorage.setItem(`istirahatTime_${user.nik}_${todayDateStr}`, timeToPrint.getTime().toString());
+    }
+    if (attendanceType === 'Selesai Istirahat') {
+        const startTimeStr = localStorage.getItem(`istirahatTime_${user.nik}_${todayDateStr}`);
+        if (startTimeStr) {
+            const startMs = parseInt(startTimeStr, 10);
+            const endMs = timeToPrint.getTime();
+            const diffMs = endMs - startMs;
+            const diffMinutes = Math.floor(diffMs / 60000);
+            const hours = Math.floor(diffMinutes / 60);
+            const minutes = diffMinutes % 60;
+            setIstirahatDurationStr(`${hours} Jam ${minutes} Menit`);
+        }
+    }
+
+    // Notify parent of the new record
+    if (onRecord) {
+        onRecord({
+            id: Date.now().toString(),
+            userId: user.id || 'unknown',
+            userNik: user.nik || 'unknown',
+            userName: user.name || user.username || 'unknown',
+            type: attendanceType,
+            timestamp: timeToPrint.toISOString(),
+            latitude: location.lat,
+            longitude: location.lng,
+            address: address,
+            photo: photoUrl
+        });
+    }
+
+    // Stop stream if it was open
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      setStream(null);
+    }
+    
+    setStep('success');
+  };
+
   const startAttendance = () => {
     setStep('locating');
     setError(null);
@@ -284,74 +363,7 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user, attendanceR
         
         const imageSrc = canvas.toDataURL('image/jpeg');
         setPhoto(imageSrc);
-        setSubmittedTime(timeToPrint); // Freeze attendance time
-        
-        // Simpan marker absensi ke Database (Manual Offset agar akurat di DB & Display)
-        const tzOffset = 7 * 60 * 60 * 1000; // WIB
-        const localTime = new Date(timeToPrint.getTime() + tzOffset);
-        const localTimeStr = localTime.toISOString().slice(0, 19).replace('T', ' ');
-
-        const newRecord = {
-            id: Date.now().toString(),
-            staffId: user.id || 'unknown',
-            type: attendanceType,
-            timestamp: localTimeStr, // Kirim format lokal YYYY-MM-DD HH:mm:ss
-            latitude: location.lat,
-            longitude: location.lng,
-            photoUrl: imageSrc,
-            nik: user.nik || 'unknown',
-            staffName: user.name || user.username || 'unknown',
-            address: address,
-            jadwalId: activeSchedule?.id || null
-        };
-
-        apiService.createAttendance(newRecord).catch(err => {
-            console.error("API Attendance Error:", err);
-            if (err.response?.data?.error) {
-                alert(err.response.data.error);
-                setStep('idle');
-            }
-        });
-        
-        if (attendanceType === 'Istirahat') {
-            localStorage.setItem(`istirahatTime_${user.nik}_${todayDateStr}`, timeToPrint.getTime().toString());
-        }
-        if (attendanceType === 'Selesai Istirahat') {
-            const startTimeStr = localStorage.getItem(`istirahatTime_${user.nik}_${todayDateStr}`);
-            if (startTimeStr) {
-                const startMs = parseInt(startTimeStr, 10);
-                const endMs = timeToPrint.getTime();
-                const diffMs = endMs - startMs;
-                const diffMinutes = Math.floor(diffMs / 60000);
-                const hours = Math.floor(diffMinutes / 60);
-                const minutes = diffMinutes % 60;
-                setIstirahatDurationStr(`${hours} Jam ${minutes} Menit`);
-            }
-        }
-
-        // Notify parent of the new record
-        if (onRecord) {
-            onRecord({
-                id: Date.now().toString(),
-                userId: user.id || 'unknown',
-                userNik: user.nik || 'unknown',
-                userName: user.name || user.username || 'unknown',
-                type: attendanceType,
-                timestamp: timeToPrint.toISOString(),
-                latitude: location.lat,
-                longitude: location.lng,
-                address: address,
-                photo: imageSrc
-            });
-        }
-
-        // Stop stream
-        if (stream) {
-          stream.getTracks().forEach(track => track.stop());
-          setStream(null);
-        }
-        
-        setStep('success');
+        submitAttendance(imageSrc);
       }
     }
   };
@@ -626,10 +638,11 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user, attendanceR
             </div>
 
             <button 
-              onClick={openCamera}
-              className="w-full py-4 bg-indigo-500 hover:bg-indigo-600 text-white font-black rounded-xl shadow-lg transition-colors flex items-center justify-center gap-2"
+              onClick={isBreakType ? () => submitAttendance(null) : openCamera}
+              className={`w-full py-4 text-white font-black rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 ${isBreakType ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-indigo-500 hover:bg-indigo-600'}`}
             >
-              <Camera size={20} /> Lanjut Akses Kamera
+              {isBreakType ? <CheckCircle2 size={20} /> : <Camera size={20} />}
+              {isBreakType ? `Kirim Absensi ${attendanceType}` : 'Lanjut Akses Kamera'}
             </button>
             <button onClick={reset} className="w-full py-2 text-slate-400 font-bold text-sm">Batal</button>
           </div>
@@ -687,7 +700,14 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({ user, attendanceR
             </div>
             
             <div className="bg-slate-50 p-4 rounded-3xl border border-slate-200 w-full max-w-sm mx-auto shadow-sm">
-              <img src={photo} alt="Selfie Absensi" className="w-full h-48 object-cover rounded-2xl mb-5 shadow-sm border border-slate-200" />
+              {photo ? (
+                <img src={photo} alt="Selfie Absensi" className="w-full h-48 object-cover rounded-2xl mb-5 shadow-sm border border-slate-200" />
+              ) : (
+                <div className="w-full h-32 bg-slate-100 rounded-2xl mb-5 flex flex-col items-center justify-center text-slate-400 border border-slate-200 border-dashed">
+                    <User size={32} className="mb-2 opacity-50" />
+                    <p className="text-[10px] font-bold uppercase tracking-widest">Absensi Tanpa Foto</p>
+                </div>
+              )}
               
               <div className="space-y-4 text-left">
                 <div className="flex flex-col gap-1 pb-3 border-b border-slate-200">

@@ -321,15 +321,21 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
                                     </div>
                                  </td>
                                  <td className="py-4 px-6 text-center">
-                                    <button
-                                       onClick={() => setSelectedPhoto(rec.photo)}
-                                       className="relative w-10 h-10 rounded-lg overflow-hidden border border-slate-200 hover:ring-2 hover:ring-indigo-500 transition-all mx-auto shadow-sm"
-                                    >
-                                       <img src={rec.photo} className="w-full h-full object-cover" />
-                                       <div className="absolute inset-0 bg-black/20 opacity-0 hover:opacity-100 flex items-center justify-center text-white">
-                                          <Eye size={14} />
+                                    {rec.photo ? (
+                                       <button
+                                          onClick={() => setSelectedPhoto(rec.photo)}
+                                          className="relative w-10 h-10 rounded-lg overflow-hidden border border-slate-200 hover:ring-2 hover:ring-indigo-500 transition-all mx-auto shadow-sm"
+                                       >
+                                          <img src={rec.photo} className="w-full h-full object-cover" />
+                                          <div className="absolute inset-0 bg-black/20 opacity-0 hover:opacity-100 flex items-center justify-center text-white">
+                                             <Eye size={14} />
+                                          </div>
+                                       </button>
+                                    ) : (
+                                       <div className="w-10 h-10 rounded-lg bg-slate-50 flex items-center justify-center text-slate-300 border border-slate-100 mx-auto">
+                                          <Camera size={16} />
                                        </div>
-                                    </button>
+                                    )}
                                  </td>
                                  <td className="py-4 px-6 text-center">
                                     <button
@@ -352,11 +358,17 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
                     <div key={rec.id} className="p-5 space-y-4 hover:bg-slate-50/50 transition-colors">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <img 
-                            src={rec.photo} 
-                            className="w-12 h-12 rounded-xl object-cover border border-slate-100 shadow-sm" 
-                            onClick={() => setSelectedPhoto(rec.photo)} 
-                          />
+                          {rec.photo ? (
+                            <img 
+                              src={rec.photo} 
+                              className="w-12 h-12 rounded-xl object-cover border border-slate-100 shadow-sm" 
+                              onClick={() => setSelectedPhoto(rec.photo)} 
+                            />
+                          ) : (
+                            <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center text-slate-300 border border-slate-100 shadow-sm shrink-0">
+                               <Camera size={18} />
+                            </div>
+                          )}
                           <div>
                             <p className="font-black text-slate-800 uppercase text-xs">{rec.userName}</p>
                             <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase ${
@@ -874,7 +886,14 @@ const AdminReportsSection: React.FC<AdminReportsSectionProps> = ({ mode, attenda
                   <div className="p-8 space-y-6">
                      <div className="flex gap-6">
                         <div className="w-40 h-48 rounded-2xl overflow-hidden border-2 border-slate-100 shadow-sm shrink-0">
-                           <img src={selectedAttendance.photo} className="w-full h-full object-cover" />
+                           {selectedAttendance.photo ? (
+                              <img src={selectedAttendance.photo} className="w-full h-full object-cover" />
+                           ) : (
+                              <div className="w-full h-full bg-slate-50 flex flex-col items-center justify-center text-slate-300">
+                                 <Camera size={32} />
+                                 <p className="text-[10px] font-bold mt-2 uppercase tracking-widest text-center">Tanpa Foto</p>
+                              </div>
+                           )}
                         </div>
                         <div className="flex-1 space-y-4">
                            <div>
