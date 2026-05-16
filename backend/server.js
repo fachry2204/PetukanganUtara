@@ -94,11 +94,9 @@ if (fs.existsSync(distPath)) {
 }
 
 // Start Server
-if (require.main === module || !process.env.PASSENGER_APP_ENV) {
-    app.listen(PORT, () => {
-        console.log(`Server API Berjalan di Port ${PORT}`);
-    });
-}
+app.listen(PORT, () => {
+    console.log(`Server API Berjalan di Port ${PORT}`);
+});
 
-// Export app for Phusion Passenger in Plesk
+// Export app for Phusion Passenger in Plesk (just in case)
 module.exports = app;
