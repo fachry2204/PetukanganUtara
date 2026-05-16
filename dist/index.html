@@ -2,8 +2,28 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manajemen Pasukan Orange - SiPetut</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#f97316">
+    <title>SiPetut - Sistem Informasi PPSU</title>
+    
+    <script>
+        // Force unregister all service workers to clear stuck PWA states
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for(let registration of registrations) {
+                    registration.unregister();
+                }
+            });
+            
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('SW Registered'))
+                    .catch(e => console.log('SW Registration Failed', e));
+            });
+        }
+    </script>
+
     <!-- Tailwind CSS via CDN is kept for simplicity, though npm install is recommended for production -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -12,6 +32,13 @@
         body {
             font-family: 'Inter', sans-serif;
             background-color: #ffffff;
+            touch-action: pan-x pan-y; /* Prevent double-tap zoom but allow scrolling */
+        }
+        /* Mobile Input Focus Zoom Prevention */
+        @media screen and (max-width: 768px) {
+            input, select, textarea {
+                font-size: 16px !important;
+            }
         }
         @media print {
             .no-print {
@@ -43,6 +70,14 @@
         .animate-danger-pulse {
             animation: danger-pulse 0.5s infinite;
         }
+
+        @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin-slow {
+            animation: spin-slow 3s linear infinite;
+        }
         
         /* Scrollbar styling */
         .custom-scrollbar::-webkit-scrollbar {
@@ -70,24 +105,26 @@
             display: none !important;
             visibility: hidden !important;
         }
-    </style>
+        
+        * {
+            -webkit-tap-highlight-color: transparent;
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e1 #f1f5f9;
+        }
+        
+        body {
+            overscroll-behavior-y: contain;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
 
-<script type="importmap">
-{
-  "imports": {
-    "react": "https://esm.sh/react@^19.2.3",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "lucide-react": "https://esm.sh/lucide-react@^0.563.0",
-    "recharts": "https://esm.sh/recharts@^3.7.0",
-    "leaflet": "https://esm.sh/leaflet@^1.9.4",
-    "@google/genai": "https://esm.sh/@google/genai@^1.38.0",
-    "vite": "https://esm.sh/vite@^7.3.1",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
-  }
-}
-</script>
-  <script type="module" crossorigin src="./assets/index-Blpa4PDJ.js"></script>
+        .safe-bottom {
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+    </style>
+  <script type="module" crossorigin src="/assets/index-m_zAG9Af.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/vendor-react-u2x7b85b.js">
+  <link rel="modulepreload" crossorigin href="/assets/vendor-ui-BFbEiQRP.js">
 </head>
 <body>
     <div id="root"></div>

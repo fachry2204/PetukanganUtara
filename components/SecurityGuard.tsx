@@ -51,9 +51,14 @@ const SecurityGuard: React.FC<SecurityGuardProps> = ({ user, children }) => {
             return;
         }
 
-        // 3. Time Sync
+        // 3. Time Sync with Timeout
         try {
-            const serverTimeRes = await fetch('/api/time').then(r => r.json());
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 detik timeout
+
+            const serverTimeRes = await fetch('/api/time', { signal: controller.signal }).then(r => r.json());
+            clearTimeout(timeoutId);
+
             const serverDate = new Date(serverTimeRes.datetime);
             const clientDate = new Date();
             const diffSeconds = Math.abs(serverDate.getTime() - clientDate.getTime()) / 1000;
@@ -62,7 +67,10 @@ const SecurityGuard: React.FC<SecurityGuardProps> = ({ user, children }) => {
                 handleViolation('Manipulasi Waktu (Jam Perangkat Salah)');
                 return;
             }
-        } catch (e) { /* server unreachable, continue */ }
+        } catch (e) { 
+            console.warn('Server time sync failed or timeout, bypassing...', e);
+            // server unreachable or timeout, continue to allow access
+        }
 
         setStatus('OK');
     }, [user]);
