@@ -4,3 +4,5 @@ backend/.wwebjs_cache/
 backend/scratch/
 .DS_Store
 *.log
+
+/generated/prisma

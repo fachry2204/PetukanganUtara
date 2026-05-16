@@ -1,0 +1,178 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model announcements {
+  id             String    @id @db.VarChar(50)
+  title          String?   @db.VarChar(255)
+  content        String?   @db.Text
+  target_role    String?   @db.VarChar(100)
+  target_user_id String?   @db.VarChar(50)
+  author_name    String?   @db.VarChar(255)
+  author_role    String?   @db.VarChar(100)
+  date           DateTime? @db.DateTime(0)
+  priority       String?   @db.VarChar(50)
+  image_url      String?   @db.LongText
+  start_date     DateTime? @db.Date
+  end_date       DateTime? @db.Date
+}
+
+model attendance {
+  id         String    @id @db.VarChar(50)
+  staff_id   String?   @db.VarChar(50)
+  type       String?   @db.VarChar(50)
+  timestamp  DateTime? @db.DateTime(0)
+  latitude   Float?
+  longitude  Float?
+  photo_url  String?   @db.LongText
+  nik        String?   @db.VarChar(50)
+  staff_name String?   @db.VarChar(255)
+  address    String?   @db.Text
+  jadwal_id  String?   @db.VarChar(50)
+}
+
+model attendance_requests {
+  id           Int                         @id @default(autoincrement())
+  staff_id     String?                     @db.VarChar(50)
+  nik          String?                     @db.VarChar(20)
+  staff_name   String?                     @db.VarChar(255)
+  request_date DateTime?                   @db.Date
+  status       attendance_requests_status? @default(PENDING)
+  created_at   DateTime                    @default(now()) @db.Timestamp(0)
+  approved_by  String?                     @db.VarChar(50)
+}
+
+model jadwal_ppsu {
+  id         String    @id @db.VarChar(50)
+  staff_id   String?   @db.VarChar(50)
+  date       DateTime? @db.Date
+  day        String?   @db.VarChar(20)
+  shift      String?   @db.VarChar(50)
+  start_time DateTime? @db.Time(0)
+  end_time   DateTime? @db.Time(0)
+  area       String?   @db.Text
+  timestamp  DateTime? @db.DateTime(0)
+}
+
+model reports {
+  id                 String    @id @db.VarChar(50)
+  ticket_number      String?   @db.VarChar(100)
+  title              String?   @db.Text
+  description        String?   @db.Text
+  category           String?   @db.VarChar(100)
+  reporter_name      String?   @db.VarChar(255)
+  reporter_nik       String?   @db.VarChar(50)
+  reporter_phone     String?   @db.VarChar(50)
+  location           String?   @db.Text
+  latitude           Float?
+  longitude          Float?
+  status             String?   @db.VarChar(50)
+  timestamp          DateTime? @db.DateTime(0)
+  photo_url          String?   @db.Text
+  priority           String?   @db.VarChar(50)
+  logs               String?   @db.LongText
+  photo_arrival      String?   @db.Text
+  photo_completion   String?   @db.Text
+  photo_revision     String?   @db.Text
+  rejection_reason   String?   @db.Text
+  assigned_staff_ids String?   @db.LongText
+  estimation_time    String?   @db.VarChar(100)
+  gps_arrival        String?   @db.LongText
+  foto_sebelum       String?   @db.LongText
+  foto_sedang        String?   @db.LongText
+  foto_sesudah       String?   @db.LongText
+}
+
+model settings {
+  id                  String  @id @db.VarChar(50)
+  system_name         String? @db.VarChar(255)
+  sub_name            String? @db.VarChar(255)
+  footer_text         String? @db.Text
+  app_version         String? @db.VarChar(50)
+  theme_color         String? @db.VarChar(50)
+  logo                String? @db.LongText
+  login_background    String? @db.LongText
+  anjungan_background String? @db.LongText
+  zona_list           String? @db.LongText
+  shift_config        String? @db.LongText
+  wa_gateway_config   String? @db.LongText
+}
+
+model sos_alerts {
+  id          Int       @id @default(autoincrement())
+  alert_key   String?   @db.VarChar(100)
+  nik         String?   @db.VarChar(50)
+  name        String?   @db.VarChar(255)
+  time        DateTime? @db.DateTime(0)
+  latitude    Float?
+  longitude   Float?
+  is_resolved Boolean?  @default(false)
+}
+
+model staff {
+  id                   String    @id @db.VarChar(50)
+  nik                  String?   @db.VarChar(50)
+  nomor_anggota        String?   @db.VarChar(50)
+  nama_lengkap         String?   @db.VarChar(255)
+  jenis_kelamin        String?   @db.VarChar(50)
+  status               String?   @db.VarChar(50)
+  foto_profile         String?   @db.LongText
+  alamat_lengkap       String?   @db.Text
+  nomor_whatsapp       String?   @db.VarChar(50)
+  latitude             Float?
+  longitude            Float?
+  total_tugas_berhasil Int?      @default(0)
+  tanggal_masuk        DateTime? @db.Date
+}
+
+model tugas_ppsu {
+  id               String    @id @db.VarChar(50)
+  judul_tugas      String?   @db.Text
+  deskripsi        String?   @db.Text
+  kategori         String?   @db.VarChar(100)
+  lokasi           String?   @db.Text
+  latitude         Float?
+  longitude        Float?
+  status           String?   @db.VarChar(50)
+  timestamp        DateTime? @db.DateTime(0)
+  foto_sebelum     String?   @db.LongText
+  foto_sedang      String?   @db.LongText
+  foto_sesudah     String?   @db.LongText
+  priority         String?   @db.VarChar(50)
+  logs             String?   @db.LongText
+  reporter_name    String?   @db.VarChar(255)
+  reporter_nik     String?   @db.VarChar(50)
+  staff_id         String?   @db.Text
+  alasan_penolakan String?   @db.Text
+}
+
+model users {
+  id       String  @id @db.VarChar(50)
+  username String? @db.VarChar(100)
+  name     String? @db.VarChar(255)
+  email    String? @db.VarChar(255)
+  nik      String? @db.VarChar(50)
+  role     String? @db.VarChar(100)
+  avatar   String? @db.LongText
+  password String? @db.VarChar(255)
+}
+
+model wa_logs {
+  id           Int       @id @default(autoincrement())
+  penerima     String?   @db.VarChar(50)
+  pesan        String?   @db.Text
+  tipe         String?   @db.VarChar(50)
+  status       String?   @db.VarChar(20)
+  waktu        DateTime? @default(now()) @db.DateTime(0)
+  error_detail String?   @db.Text
+}
+
+enum attendance_requests_status {
+  PENDING
+  APPROVED
+  REJECTED
+}
