@@ -7,7 +7,7 @@
     "build": "node node_modules/vite/bin/vite.js build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
-    "build:plesk": "npx prisma generate && npm run build && npm install --no-optional"
+    "build:plesk": "npx prisma generate --schema=prisma/schema.prisma && npm run build && npm install --no-optional"
   },
   "dependencies": {
     "@google/genai": "latest",

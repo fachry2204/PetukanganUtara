@@ -42,8 +42,9 @@ router.post('/login', async (req, res) => {
         console.error('CRITICAL Login Error:', err.message);
         console.error('Error Details:', err);
         res.status(500).json({ 
-            error: 'Terjadi kesalahan pada server.',
-            details: err.message
+            error: 'Terjadi kesalahan pada server database.',
+            message: err.message,
+            code: err.code
         });
     }
 });
