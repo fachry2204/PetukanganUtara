@@ -38,7 +38,7 @@ router.post('/login', async (req, res) => {
         console.error('Error Details:', err);
         res.status(500).json({ 
             error: 'Terjadi kesalahan pada server.',
-            details: process.env.NODE_ENV === 'development' ? err.message : undefined
+            details: err.message
         });
     }
 });
