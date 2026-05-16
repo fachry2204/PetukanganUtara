@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const prisma = require('../prisma');
+const db = require('../db');
 const NodeCache = require('node-cache');
 
 const cache = new NodeCache({ stdTTL: 60, checkperiod: 120 });
@@ -14,7 +14,7 @@ router.get('/', async (req, res) => {
         }
 
         const limit = Number(req.query.limit) || 100;
-        const rows = await prisma.$queryRawUnsafe('SELECT * FROM tugas_ppsu ORDER BY timestamp DESC LIMIT ?', limit);
+        const rows = await db.execute('SELECT * FROM tugas_ppsu ORDER BY timestamp DESC LIMIT ?', limit).then(res => res[0]);
         
         const tugas = rows.map(r => {
             const safeParse = (str) => {
@@ -57,19 +57,19 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
     const t = req.body;
     try {
-        await prisma.$executeRawUnsafe(`
+        await db.execute(`
             INSERT INTO tugas_ppsu (id, judul_tugas, deskripsi, kategori, lokasi, latitude, longitude, status, timestamp, foto_sebelum, foto_sedang, foto_sesudah, priority, logs, reporter_name, reporter_nik)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, t.id, t.judulTugas, t.deskripsi, t.kategori, t.lokasi, t.latitude, t.longitude, t.status, t.timestamp ? new Date(t.timestamp) : null, t.fotoSebelum, t.fotoSedang, t.fotoSesudah, t.priority, JSON.stringify(t.logs || []), t.reporterName, t.reporterNik);
         
         // WA NOTIFICATION LOGIC
         try {
-            const settingsRows = await prisma.$queryRawUnsafe('SELECT wa_gateway_config FROM settings WHERE id = "app_settings"');
+            const settingsRows = await db.execute('SELECT wa_gateway_config FROM settings WHERE id = "app_settings"').then(res => res[0]);
             const config = JSON.parse(settingsRows[0]?.wa_gateway_config || '{}');
             
             if (config.enableTasks) {
                 const waService = require('../services/whatsappService');
-                const staffRows = await prisma.$queryRawUnsafe('SELECT nomor_whatsapp FROM staff WHERE nik = ?', t.reporterNik);
+                const staffRows = await db.execute('SELECT nomor_whatsapp FROM staff WHERE nik = ?', t.reporterNik).then(res => res[0]);
                 const staffPhone = staffRows[0]?.nomor_whatsapp;
 
                 if (staffPhone) {
@@ -98,7 +98,7 @@ router.put('/:id', async (req, res) => {
     const { id } = req.params;
     const t = req.body;
     try {
-        await prisma.$executeRawUnsafe(`
+        await db.execute(`
             UPDATE tugas_ppsu SET 
             status = ?, logs = ?, foto_sebelum = ?, foto_sedang = ?, foto_sesudah = ?, 
             alasan_penolakan = ?, staff_id = ?, priority = ?
@@ -108,12 +108,12 @@ router.put('/:id', async (req, res) => {
         
         // WA NOTIFICATION LOGIC FOR UPDATES
         try {
-            const settingsRows = await prisma.$queryRawUnsafe('SELECT wa_gateway_config FROM settings WHERE id = "app_settings"');
+            const settingsRows = await db.execute('SELECT wa_gateway_config FROM settings WHERE id = "app_settings"').then(res => res[0]);
             const config = JSON.parse(settingsRows[0]?.wa_gateway_config || '{}');
             
             if (config.enableTasks) {
                 const waService = require('../services/whatsappService');
-                const staffRows = await prisma.$queryRawUnsafe('SELECT nomor_whatsapp FROM staff WHERE nik = ?', t.reporterNik);
+                const staffRows = await db.execute('SELECT nomor_whatsapp FROM staff WHERE nik = ?', t.reporterNik).then(res => res[0]);
                 const staffPhone = staffRows[0]?.nomor_whatsapp;
 
                 if (staffPhone) {

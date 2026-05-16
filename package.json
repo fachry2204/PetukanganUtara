@@ -7,11 +7,10 @@
     "build": "node node_modules/vite/bin/vite.js build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
-    "build:plesk": "npx prisma generate --schema=prisma/schema.prisma && npm run build && npm install --no-optional"
+    "build:plesk": "npm run build && npm install --no-optional"
   },
   "dependencies": {
     "@google/genai": "latest",
-    "@prisma/client": "^6.2.1",
     "axios": "^1.15.0",
     "bcryptjs": "^3.0.3",
     "body-parser": "^1.20.2",
@@ -40,7 +39,6 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "postcss": "^8.4.35",
-    "prisma": "^6.2.1",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.2.2",
     "vite": "^5.1.6"

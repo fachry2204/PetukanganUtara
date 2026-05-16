@@ -1,16 +1,16 @@
 const express = require('express');
 const router = express.Router();
-const prisma = require('../prisma');
+const db = require('../db');
 
 // GET ALL JADWAL
 router.get('/', async (req, res) => {
     try {
-        const rows = await prisma.$queryRawUnsafe(`
+        const rows = await db.execute(`
             SELECT j.*, s.nama_lengkap, s.nomor_anggota, s.nik
             FROM jadwal_ppsu j 
             JOIN staff s ON j.staff_id = s.id 
             ORDER BY j.date DESC, j.timestamp DESC
-        `);
+        `).then(res => res[0]);
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -21,19 +21,19 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
     const j = req.body;
     try {
-        await prisma.$executeRawUnsafe(`
+        await db.execute(`
             INSERT INTO jadwal_ppsu (id, staff_id, date, day, shift, start_time, end_time, area, timestamp)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, j.id, j.staffId, j.date ? new Date(j.date) : null, j.day, j.shift, j.startTime, j.endTime, j.area, new Date());
 
         // WA NOTIFICATION LOGIC
         try {
-            const settingsRows = await prisma.$queryRawUnsafe('SELECT wa_gateway_config FROM settings WHERE id = "app_settings"');
+            const settingsRows = await db.execute('SELECT wa_gateway_config FROM settings WHERE id = "app_settings"').then(res => res[0]);
             const config = JSON.parse(settingsRows[0]?.wa_gateway_config || '{}');
             
             if (config.enableTasks) {
                 const waService = require('../services/whatsappService');
-                const staffRows = await prisma.$queryRawUnsafe('SELECT nama_lengkap, nomor_whatsapp FROM staff WHERE id = ?', j.staffId);
+                const staffRows = await db.execute('SELECT nama_lengkap, nomor_whatsapp FROM staff WHERE id = ?', j.staffId).then(res => res[0]);
                 
                 if (staffRows.length > 0 && staffRows[0].nomor_whatsapp) {
                     const s = staffRows[0];
@@ -57,7 +57,7 @@ router.post('/', async (req, res) => {
 // DELETE JADWAL
 router.delete('/:id', async (req, res) => {
     try {
-        await prisma.$executeRawUnsafe('DELETE FROM jadwal_ppsu WHERE id = ?', req.params.id);
+        await db.execute('DELETE FROM jadwal_ppsu WHERE id = ?', req.params.id);
         res.json({ message: 'Jadwal deleted' });
     } catch (err) {
         res.status(500).json({ error: err.message });

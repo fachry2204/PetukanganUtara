@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const prisma = require('../prisma');
+const db = require('../db');
 
 // GET ALL VIOLATIONS
 router.get('/', async (req, res) => {
     try {
-        const rows = await prisma.$queryRawUnsafe('SELECT * FROM pelanggaran ORDER BY timestamp DESC');
+        const rows = await db.execute('SELECT * FROM pelanggaran ORDER BY timestamp DESC').then(res => res[0]);
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -16,7 +16,7 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
     const v = req.body;
     try {
-        await prisma.$executeRawUnsafe(`
+        await db.execute(`
             INSERT INTO pelanggaran (user_id, ppsu_name, device_info, violation_type)
             VALUES (?, ?, ?, ?)
         `, v.userId, v.ppsuName, v.deviceInfo, v.violationType);
@@ -29,7 +29,7 @@ router.post('/', async (req, res) => {
 // DELETE A VIOLATION
 router.delete('/:id', async (req, res) => {
     try {
-        await prisma.$executeRawUnsafe('DELETE FROM pelanggaran WHERE id = ?', req.params.id);
+        await db.execute('DELETE FROM pelanggaran WHERE id = ?', req.params.id);
         res.json({ message: 'Violation deleted' });
     } catch (err) {
         res.status(500).json({ error: err.message });

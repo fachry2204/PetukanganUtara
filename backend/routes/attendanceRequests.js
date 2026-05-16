@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const prisma = require('../prisma');
+const db = require('../db');
 
 // GET ALL REQUESTS
 router.get('/', async (req, res) => {
     try {
-        const rows = await prisma.$queryRawUnsafe('SELECT * FROM attendance_requests ORDER BY created_at DESC');
+        const rows = await db.execute('SELECT * FROM attendance_requests ORDER BY created_at DESC').then(res => res[0]);
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -15,7 +15,7 @@ router.get('/', async (req, res) => {
 // GET REQUESTS FOR SPECIFIC NIK
 router.get('/my/:nik', async (req, res) => {
     try {
-        const rows = await prisma.$queryRawUnsafe('SELECT * FROM attendance_requests WHERE nik = ? ORDER BY created_at DESC', req.params.nik);
+        const rows = await db.execute('SELECT * FROM attendance_requests WHERE nik = ? ORDER BY created_at DESC', req.params.nik).then(res => res[0]);
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -26,16 +26,16 @@ router.get('/my/:nik', async (req, res) => {
 router.post('/', async (req, res) => {
     const { staff_id, nik, staff_name, request_date } = req.body;
     try {
-        const existing = await prisma.$queryRawUnsafe(
+        const existing = await db.execute(
             'SELECT id FROM attendance_requests WHERE nik = ? AND request_date = ? AND status = "PENDING"',
             nik, request_date
-        );
+        ).then(res => res[0]);
         
         if (existing.length > 0) {
             return res.status(400).json({ error: 'Anda sudah mengirim permintaan untuk tanggal ini dan sedang menunggu verifikasi.' });
         }
 
-        await prisma.$executeRawUnsafe(
+        await db.execute(
             'INSERT INTO attendance_requests (staff_id, nik, staff_name, request_date) VALUES (?, ?, ?, ?)',
             staff_id, nik, staff_name, request_date ? new Date(request_date) : null
         );
@@ -49,7 +49,7 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
     const { status, approved_by } = req.body;
     try {
-        await prisma.$executeRawUnsafe(
+        await db.execute(
             'UPDATE attendance_requests SET status = ?, approved_by = ? WHERE id = ?',
             status, approved_by, parseInt(req.params.id)
         );

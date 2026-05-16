@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const prisma = require('../prisma');
+const db = require('../db');
 
 // GET ACTIVE SOS ALERTS
 router.get('/', async (req, res) => {
     try {
-        const rows = await prisma.$queryRawUnsafe('SELECT * FROM sos_alerts WHERE is_resolved = FALSE ORDER BY time DESC');
+        const rows = await db.execute('SELECT * FROM sos_alerts WHERE is_resolved = FALSE ORDER BY time DESC').then(res => res[0]);
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -16,7 +16,7 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
     const s = req.body;
     try {
-        await prisma.$executeRawUnsafe(`
+        await db.execute(`
             INSERT INTO sos_alerts (alert_key, nik, name, time, latitude, longitude)
             VALUES (?, ?, ?, ?, ?, ?)
         `, s.key, s.nik, s.name, s.time ? new Date(s.time) : null, s.latitude, s.longitude);
@@ -30,7 +30,7 @@ router.post('/', async (req, res) => {
 router.put('/:key', async (req, res) => {
     const { key } = req.params;
     try {
-        await prisma.$executeRawUnsafe('UPDATE sos_alerts SET is_resolved = TRUE WHERE alert_key = ?', key);
+        await db.execute('UPDATE sos_alerts SET is_resolved = TRUE WHERE alert_key = ?', key);
         res.json({ message: 'SOS alert resolved' });
     } catch (err) {
         res.status(500).json({ error: err.message });

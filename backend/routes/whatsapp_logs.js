@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const prisma = require('../prisma');
+const db = require('../db');
 
 // GET ALL WA LOGS
 router.get('/', async (req, res) => {
     try {
-        const rows = await prisma.$queryRawUnsafe('SELECT * FROM wa_logs ORDER BY waktu DESC LIMIT 500');
+        const rows = await db.execute('SELECT * FROM wa_logs ORDER BY waktu DESC LIMIT 500').then(res => res[0]);
         const mappedRows = rows.map(r => ({
             id: r.id,
             recipient: r.penerima,
@@ -24,7 +24,7 @@ router.get('/', async (req, res) => {
 // DELETE LOGS
 router.delete('/:id', async (req, res) => {
     try {
-        await prisma.$executeRawUnsafe('DELETE FROM wa_logs WHERE id = ?', req.params.id);
+        await db.execute('DELETE FROM wa_logs WHERE id = ?', req.params.id);
         res.json({ message: 'Log deleted' });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -34,7 +34,7 @@ router.delete('/:id', async (req, res) => {
 // CLEAR ALL LOGS
 router.delete('/', async (req, res) => {
     try {
-        await prisma.$executeRawUnsafe('TRUNCATE TABLE wa_logs');
+        await db.execute('TRUNCATE TABLE wa_logs');
         res.json({ message: 'All logs cleared' });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -44,7 +44,7 @@ router.delete('/', async (req, res) => {
 // RETRY MESSAGE
 router.post('/retry/:id', async (req, res) => {
     try {
-        const rows = await prisma.$queryRawUnsafe('SELECT * FROM wa_logs WHERE id = ?', req.params.id);
+        const rows = await db.execute('SELECT * FROM wa_logs WHERE id = ?', req.params.id).then(res => res[0]);
         if (rows.length === 0) return res.status(404).json({ error: 'Log not found' });
         
         const log = rows[0];

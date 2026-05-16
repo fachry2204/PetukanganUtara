@@ -2,7 +2,7 @@
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-// const db = require('./db'); // Removed legacy mysql2 pool
+const db = require('./db');
 const waService = require('./services/whatsappService');
 
 // Initialize WA Service

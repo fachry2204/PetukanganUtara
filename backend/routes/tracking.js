@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const prisma = require('../prisma');
+const db = require('../db');
 const webpush = require('web-push');
 
 // VAPID Configuration
@@ -17,11 +17,19 @@ webpush.setVapidDetails(
 router.post('/subscribe', async (req, res) => {
     const { userId, subscription } = req.body;
     try {
-        await prisma.$transaction(async (tx) => {
-            await tx.$executeRawUnsafe('DELETE FROM push_subscriptions WHERE user_id = ?', userId);
-            await tx.$executeRawUnsafe('INSERT INTO push_subscriptions (user_id, subscription_data) VALUES (?, ?)', 
-                userId, JSON.stringify(subscription));
-        });
+        const conn = await db.getConnection();
+        try {
+            await conn.beginTransaction();
+            await conn.execute('DELETE FROM push_subscriptions WHERE user_id = ?', [userId]);
+            await conn.execute('INSERT INTO push_subscriptions (user_id, subscription_data) VALUES (?, ?)', 
+                [userId, JSON.stringify(subscription)]);
+            await conn.commit();
+        } catch (txErr) {
+            await conn.rollback();
+            throw txErr;
+        } finally {
+            conn.release();
+        }
         res.status(201).json({ message: 'Subscribed' });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -32,7 +40,7 @@ router.post('/subscribe', async (req, res) => {
 router.post('/location', async (req, res) => {
     const { userId, name, latitude, longitude } = req.body;
     try {
-        await prisma.$executeRawUnsafe('INSERT INTO staff_locations (user_id, name, latitude, longitude) VALUES (?, ?, ?, ?)', 
+        await db.execute('INSERT INTO staff_locations (user_id, name, latitude, longitude) VALUES (?, ?, ?, ?)', 
             userId, name, latitude, longitude);
         res.json({ status: 'Location updated' });
     } catch (err) {
@@ -44,7 +52,7 @@ router.post('/location', async (req, res) => {
 router.post('/broadcast', async (req, res) => {
     const { title, message } = req.body;
     try {
-        const subs = await prisma.$queryRawUnsafe('SELECT subscription_data FROM push_subscriptions');
+        const subs = await db.execute('SELECT subscription_data FROM push_subscriptions').then(res => res[0]);
         const payload = JSON.stringify({ title, message });
 
         const promises = subs.map(s => {

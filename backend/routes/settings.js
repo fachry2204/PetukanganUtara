@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const prisma = require('../prisma');
+const db = require('../db');
 
 // Get current settings
 router.get('/', async (req, res) => {
     try {
-        const rows = await prisma.$queryRawUnsafe('SELECT * FROM settings WHERE id = ?', 'app_settings');
+        const rows = await db.execute('SELECT * FROM settings WHERE id = ?', 'app_settings').then(res => res[0]);
         if (rows.length === 0) {
             return res.status(404).json({ error: 'Settings not found' });
         }
@@ -53,7 +53,7 @@ router.post('/', async (req, res) => {
     try {
         console.log('Incoming Settings Update Request...');
         
-        const currentRows = await prisma.$queryRawUnsafe('SELECT * FROM settings WHERE id = ?', 'app_settings');
+        const currentRows = await db.execute('SELECT * FROM settings WHERE id = ?', 'app_settings').then(res => res[0]);
         if (currentRows.length === 0) {
             return res.status(404).json({ error: 'Settings row not found in DB' });
         }
@@ -74,7 +74,7 @@ router.post('/', async (req, res) => {
             security_config: securityConfig !== undefined ? JSON.stringify(securityConfig) : current.security_config
         };
 
-        const result = await prisma.$executeRawUnsafe(`
+        const result = await db.execute(`
             UPDATE settings SET 
                 system_name = ?, sub_name = ?, footer_text = ?, app_version = ?, theme_color = ?, 
                 logo = ?, login_background = ?, anjungan_background = ?, zona_list = ?,

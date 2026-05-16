@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const prisma = require('../prisma');
+const db = require('../db');
 const NodeCache = require('node-cache');
 
 const cache = new NodeCache({ stdTTL: 60, checkperiod: 120 });
@@ -14,7 +14,7 @@ router.get('/', async (req, res) => {
         }
 
         const limit = Number(req.query.limit) || 100;
-        const rows = await prisma.$queryRawUnsafe('SELECT * FROM reports ORDER BY timestamp DESC LIMIT ?', limit);
+        const rows = await db.execute('SELECT * FROM reports ORDER BY timestamp DESC LIMIT ?', limit).then(res => res[0]);
         
         const reports = rows.map(r => {
             const safeParse = (str) => {
@@ -61,7 +61,7 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
     const r = req.body;
     try {
-        await prisma.$executeRawUnsafe(`
+        await db.execute(`
             INSERT INTO reports (id, ticket_number, title, description, category, reporter_name, reporter_nik, reporter_phone, location, latitude, longitude, status, timestamp, photo_url, priority, logs, foto_sebelum, foto_sedang, foto_sesudah)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, r.id, r.ticketNumber, r.judulTugas || r.title, r.deskripsi || r.description, r.kategori || r.category, r.reporterName, r.reporterNik, r.reporterPhone, r.lokasi || r.location, r.latitude, r.longitude, r.status, r.timestamp ? new Date(r.timestamp) : null, r.photoUrl, r.priority, JSON.stringify(r.logs || []),
@@ -80,7 +80,7 @@ router.put('/:id', async (req, res) => {
     const { id } = req.params;
     const r = req.body;
     try {
-        await prisma.$executeRawUnsafe(`
+        await db.execute(`
             UPDATE reports SET 
             status = ?, logs = ?, photo_arrival = ?, photo_completion = ?, photo_revision = ?, 
             rejection_reason = ?, assigned_staff_ids = ?, estimation_time = ?,

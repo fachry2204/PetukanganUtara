@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const prisma = require('../prisma');
+const db = require('../db');
 const NodeCache = require('node-cache');
 const bcrypt = require('bcryptjs');
 
@@ -15,7 +15,7 @@ router.get('/', async (req, res) => {
             return res.json(cache.get(cacheKey));
         }
 
-        const staffList = await prisma.staff.findMany();
+        const staffList = await db.execute('SELECT * FROM staff').then(res => res[0]);
         const staff = staffList.map(s => ({
             id: s.id,
             nik: s.nik,
@@ -46,38 +46,27 @@ router.post('/', async (req, res) => {
         const hashedPassword = await bcrypt.hash('123', 10);
         const userId = `USER-${Date.now()}`;
         
-        await prisma.$transaction(async (tx) => {
-            await tx.staff.create({
-                data: {
-                    id: s.id, 
-                    nik: s.nik, 
-                    nomor_anggota: s.nomorAnggota, 
-                    nama_lengkap: s.namaLengkap, 
-                    jenis_kelamin: s.jenisKelamin, 
-                    status: s.status, 
-                    foto_profile: s.fotoProfile, 
-                    alamat_lengkap: s.alamatLengkap, 
-                    nomor_whatsapp: s.nomorWhatsapp, 
-                    latitude: s.latitude, 
-                    longitude: s.longitude, 
-                    total_tugas_berhasil: s.totalTugasBerhasil, 
-                    tanggal_masuk: s.tanggalMasuk ? new Date(s.tanggalMasuk) : null
-                }
-            });
+        const conn = await db.getConnection();
+        try {
+            await conn.beginTransaction();
 
-            await tx.users.create({
-                data: {
-                    id: userId, 
-                    username: s.nik, 
-                    name: s.namaLengkap, 
-                    email: s.email || `${s.nik}@sipetut.local`, 
-                    nik: s.nik, 
-                    role: 'ppsu', 
-                    avatar: s.fotoProfile, 
-                    password: hashedPassword
-                }
-            });
-        });
+            await conn.execute(
+                'INSERT INTO staff (id, nik, nomor_anggota, nama_lengkap, jenis_kelamin, status, foto_profile, alamat_lengkap, nomor_whatsapp, latitude, longitude, total_tugas_berhasil, tanggal_masuk) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                [s.id, s.nik, s.nomorAnggota, s.namaLengkap, s.jenisKelamin, s.status, s.fotoProfile, s.alamatLengkap, s.nomorWhatsapp, s.latitude, s.longitude, s.totalTugasBerhasil, s.tanggalMasuk ? new Date(s.tanggalMasuk) : null]
+            );
+
+            await conn.execute(
+                'INSERT INTO users (id, username, name, email, nik, role, avatar, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                [userId, s.nik, s.namaLengkap, s.email || `${s.nik}@sipetut.local`, s.nik, 'ppsu', s.fotoProfile, hashedPassword]
+            );
+
+            await conn.commit();
+        } catch (txErr) {
+            await conn.rollback();
+            throw txErr;
+        } finally {
+            conn.release();
+        }
 
         cache.del('all_staff');
         res.status(201).json({ message: 'Staff and User created' });
@@ -91,32 +80,30 @@ router.put('/:id', async (req, res) => {
     const { id } = req.params;
     const s = req.body;
     try {
-        await prisma.$transaction(async (tx) => {
-            await tx.staff.update({
-                where: { id: id },
-                data: {
-                    nik: s.nik, 
-                    nomor_anggota: s.nomorAnggota, 
-                    nama_lengkap: s.namaLengkap, 
-                    jenis_kelamin: s.jenisKelamin, 
-                    status: s.status, 
-                    foto_profile: s.fotoProfile, 
-                    alamat_lengkap: s.alamatLengkap, 
-                    nomor_whatsapp: s.nomorWhatsapp, 
-                    latitude: s.latitude, 
-                    longitude: s.longitude, 
-                    total_tugas_berhasil: s.totalTugasBerhasil
-                }
-            });
+        const conn = await db.getConnection();
+        try {
+            await conn.beginTransaction();
 
-            const userExists = await tx.users.findFirst({ where: { nik: s.nik } });
-            if (userExists) {
-                await tx.users.updateMany({
-                    where: { nik: s.nik },
-                    data: { name: s.namaLengkap, avatar: s.fotoProfile }
-                });
+            await conn.execute(
+                'UPDATE staff SET nik=?, nomor_anggota=?, nama_lengkap=?, jenis_kelamin=?, status=?, foto_profile=?, alamat_lengkap=?, nomor_whatsapp=?, latitude=?, longitude=?, total_tugas_berhasil=? WHERE id=?',
+                [s.nik, s.nomorAnggota, s.namaLengkap, s.jenisKelamin, s.status, s.fotoProfile, s.alamatLengkap, s.nomorWhatsapp, s.latitude, s.longitude, s.totalTugasBerhasil, id]
+            );
+
+            const [userExists] = await conn.execute('SELECT nik FROM users WHERE nik = ? LIMIT 1', [s.nik]);
+            if (userExists.length > 0) {
+                await conn.execute(
+                    'UPDATE users SET name=?, avatar=? WHERE nik=?',
+                    [s.namaLengkap, s.fotoProfile, s.nik]
+                );
             }
-        });
+
+            await conn.commit();
+        } catch (txErr) {
+            await conn.rollback();
+            throw txErr;
+        } finally {
+            conn.release();
+        }
 
         cache.del('all_staff');
         res.json({ message: 'Staff and User updated' });
@@ -129,13 +116,21 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
     const { id } = req.params;
     try {
-        await prisma.$transaction(async (tx) => {
-            const staff = await tx.staff.findUnique({ where: { id: id }, select: { nik: true } });
-            if (staff && staff.nik) {
-                await tx.users.deleteMany({ where: { nik: staff.nik } });
+        const conn = await db.getConnection();
+        try {
+            await conn.beginTransaction();
+            const [staff] = await conn.execute('SELECT nik FROM staff WHERE id = ? LIMIT 1', [id]);
+            if (staff.length > 0 && staff[0].nik) {
+                await conn.execute('DELETE FROM users WHERE nik = ?', [staff[0].nik]);
             }
-            await tx.staff.delete({ where: { id: id } });
-        });
+            await conn.execute('DELETE FROM staff WHERE id = ?', [id]);
+            await conn.commit();
+        } catch (txErr) {
+            await conn.rollback();
+            throw txErr;
+        } finally {
+            conn.release();
+        }
 
         cache.del('all_staff');
         res.json({ message: 'Staff and associated User deleted' });
