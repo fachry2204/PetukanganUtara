@@ -1,4 +1,12 @@
-const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
+let Client, LocalAuth, MessageMedia;
+try {
+    const wa = require('whatsapp-web.js');
+    Client = wa.Client;
+    LocalAuth = wa.LocalAuth;
+    MessageMedia = wa.MessageMedia;
+} catch (e) {
+    console.warn('⚠️ whatsapp-web.js not installed. WhatsApp features will be disabled.');
+}
 const qrcode = require('qrcode');
 const path = require('path');
 const db = require('../db');
@@ -28,6 +36,11 @@ class WhatsAppService {
     }
 
     async init(force = false) {
+        if (!Client) {
+            console.error('❌ Cannot initialize WA: whatsapp-web.js library is missing.');
+            this.status = 'DISCONNECTED';
+            return;
+        }
         if (this.isInitialized && !force) return;
         
         if (force) {
