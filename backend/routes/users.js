@@ -34,8 +34,12 @@ router.post('/login', async (req, res) => {
         const { password: _, ...userWithoutPassword } = user;
         res.json(userWithoutPassword);
     } catch (err) {
-        console.error('Login Error:', err);
-        res.status(500).json({ error: 'Terjadi kesalahan pada server.' });
+        console.error('CRITICAL Login Error:', err.message);
+        console.error('Error Details:', err);
+        res.status(500).json({ 
+            error: 'Terjadi kesalahan pada server.',
+            details: process.env.NODE_ENV === 'development' ? err.message : undefined
+        });
     }
 });
 
