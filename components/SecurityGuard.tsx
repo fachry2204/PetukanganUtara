@@ -14,6 +14,14 @@ const SecurityGuard: React.FC<SecurityGuardProps> = ({ user, children }) => {
     const [violationType, setViolationType] = useState<string | null>(null);
 
     const checkSecurity = useCallback(async () => {
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        
+        // Bypass security checks for PC users
+        if (!isMobile) {
+            setStatus('OK');
+            return;
+        }
+
         setStatus('CHECKING');
         
         let camOk = false;
