@@ -10,15 +10,24 @@ const cache = new NodeCache({ stdTTL: 300, checkperiod: 320 });
 router.post('/login', async (req, res) => {
     const { identifier, password } = req.body;
     try {
-        const user = await prisma.users.findFirst({
-            where: {
-                OR: [
-                    { username: identifier },
-                    { email: identifier },
-                    { nik: identifier }
-                ]
+        let user;
+        try {
+            // Coba menggunakan mysql2 langsung untuk bypass Prisma Engine (yang sering hang di Plesk)
+            const mysql = require('mysql2/promise');
+            const connection = await mysql.createConnection(process.env.DATABASE_URL.replace('?connect_timeout=10', ''));
+            const [rows] = await connection.execute(
+                'SELECT * FROM users WHERE username = ? OR email = ? OR nik = ? LIMIT 1',
+                [identifier, identifier, identifier]
+            );
+            await connection.end();
+            if (rows.length > 0) {
+                user = rows[0];
             }
-        });
+        } catch (mysqlErr) {
+            console.error('MySQL2 Fallback Error:', mysqlErr.message);
+            // Jika mysql2 gagal, biarkan error (berarti database benar-benar tidak bisa dihubungi)
+            throw new Error('Database connection failed: ' + mysqlErr.message);
+        }
 
         if (!user) {
             return res.status(404).json({ error: 'Pengguna tidak ditemukan.' });
