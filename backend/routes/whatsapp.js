@@ -3,8 +3,8 @@ const express = require('express');
 const router = express.Router();
 const waService = require('../services/whatsappService');
 
-// Initialize WA on first access
-waService.init();
+// Initialize WA manually via dashboard, do not auto-init on startup to save resources
+// waService.init();
 
 // GET WA Status and QR
 router.get('/status', (req, res) => {

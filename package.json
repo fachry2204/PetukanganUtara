@@ -8,7 +8,8 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "postinstall": "cd backend && npm install",
-    "build:plesk": "npm run build && npm install"
+    "build:plesk": "npm run build && npm install",
+    "start": "node server.js"
   },
   "dependencies": {
     "@google/genai": "latest",
