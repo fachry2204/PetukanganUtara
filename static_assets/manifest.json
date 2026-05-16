@@ -1,0 +1,17 @@
+{
+  "name": "SiPetut",
+  "short_name": "SiPetut",
+  "description": "Sistem Informasi PPSU Kelurahan Petukangan Utara",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#f97316",
+  "icons": [
+    {
+      "src": "https://upload.wikimedia.org/wikipedia/commons/e/eb/Coat_of_arms_of_Jakarta.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

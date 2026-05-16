@@ -6,7 +6,7 @@ const db = require('./db');
 const waService = require('./services/whatsappService');
 
 // Initialize WA Service
-waService.init();
+// waService.init(); // Matikan sementara untuk tes di hosting agar tidak berat/error di hosting
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -61,22 +61,36 @@ app.use((err, req, res, next) => {
 const path = require('path');
 const fs = require('fs');
 
-// Path ke folder dist (asumsi dist ada di root project, sejajar dengan folder backend)
-const distPath = path.join(__dirname, '../dist');
+// --- SECURITY: Block access to sensitive files --- //
+app.use((req, res, next) => {
+    const forbidden = ['.env', 'backend', 'node_modules', '.git', 'package.json', 'package-lock.json'];
+    if (forbidden.some(p => req.path.toLowerCase().includes(p.toLowerCase()))) {
+        return res.status(403).json({ error: 'Forbidden: Access Denied for security reasons.' });
+    }
+    next();
+});
+
+// Path ke folder public (hasil build Vite)
+const distPath = path.join(__dirname, '..', 'public');
 
 if (fs.existsSync(distPath)) {
-    // Sajikan file statis dari folder dist
+    // Sajikan file statis dari folder public
     app.use(express.static(distPath));
 
     // Handle SPA (Single Page Application) - kirim index.html untuk semua route yang tidak terdaftar di API
     app.get('*', (req, res) => {
         if (!req.path.startsWith('/api')) {
-            res.sendFile(path.join(distPath, 'index.html'));
+            const indexFile = path.join(distPath, 'index.html');
+            if (fs.existsSync(indexFile)) {
+                res.sendFile(indexFile);
+            } else {
+                res.status(404).send('Aplikasi tidak ditemukan (index.html missing).');
+            }
         }
     });
-    console.log('✅ Frontend dist detected and serving.');
+    console.log('✅ Frontend public folder detected and serving.');
 } else {
-    console.log('⚠️ Frontend dist folder not found. Only API is active.');
+    console.log('⚠️ Frontend public folder not found. Only API is active.');
 }
 
 // Start Server
