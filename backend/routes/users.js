@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
+const prisma = require('../prisma');
 const NodeCache = require('node-cache');
 const bcrypt = require('bcryptjs');
 
@@ -10,14 +10,19 @@ const cache = new NodeCache({ stdTTL: 300, checkperiod: 320 });
 router.post('/login', async (req, res) => {
     const { identifier, password } = req.body;
     try {
-        const sql = 'SELECT * FROM users WHERE (username = ? OR email = ? OR nik = ?)';
-        const [rows] = await db.query(sql, [identifier, identifier, identifier]);
+        const user = await prisma.users.findFirst({
+            where: {
+                OR: [
+                    { username: identifier },
+                    { email: identifier },
+                    { nik: identifier }
+                ]
+            }
+        });
 
-        if (rows.length === 0) {
+        if (!user) {
             return res.status(404).json({ error: 'Pengguna tidak ditemukan.' });
         }
-
-        const user = rows[0];
 
         // Verifikasi password menggunakan bcrypt
         const isMatch = await bcrypt.compare(password, user.password);
@@ -51,9 +56,9 @@ router.get('/', async (req, res) => {
             return res.json(cache.get(cacheKey));
         }
 
-        const [rows] = await db.query('SELECT * FROM users');
-        cache.set(cacheKey, rows);
-        res.json(rows);
+        const users = await prisma.users.findMany();
+        cache.set(cacheKey, users);
+        res.json(users);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -63,16 +68,21 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
     const u = req.body;
     try {
-        // Hash password before saving
         const hashedPassword = await bcrypt.hash(u.password, 10);
         
-        const sql = `
-            INSERT INTO users (id, username, name, email, nik, role, avatar, password)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `;
-        await db.query(sql, [
-            u.id, u.username, u.name, u.email, u.nik, u.role, u.avatar, hashedPassword
-        ]);
+        await prisma.users.create({
+            data: {
+                id: u.id,
+                username: u.username,
+                name: u.name,
+                email: u.email,
+                nik: u.nik,
+                role: u.role,
+                avatar: u.avatar,
+                password: hashedPassword
+            }
+        });
+        
         cache.del('all_users');
         res.status(201).json({ message: 'User created' });
     } catch (err) {
@@ -84,76 +94,73 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
     const { id } = req.params;
     const u = req.body;
-    const connection = await db.getConnection();
     try {
-        await connection.beginTransaction();
-
-        let sql = `
-            UPDATE users SET 
-            username = ?, name = ?, email = ?, nik = ?, role = ?, avatar = ?
-        `;
-        const params = [u.username, u.name, u.email, u.nik, u.role, u.avatar];
+        const updateData = {
+            username: u.username,
+            name: u.name,
+            email: u.email,
+            nik: u.nik,
+            role: u.role,
+            avatar: u.avatar
+        };
 
         if (u.password && u.password.trim() !== '') {
-            const hashedPassword = await bcrypt.hash(u.password, 10);
-            sql += `, password = ?`;
-            params.push(hashedPassword);
+            updateData.password = await bcrypt.hash(u.password, 10);
         }
 
-        sql += ` WHERE id = ?`;
-        params.push(id);
+        await prisma.$transaction(async (tx) => {
+            await tx.users.update({
+                where: { id: id },
+                data: updateData
+            });
 
-        await connection.query(sql, params);
+            if (u.nik) {
+                // Check if staff exists before updating to avoid errors if missing
+                const staffExists = await tx.staff.findFirst({ where: { nik: u.nik } });
+                if (staffExists) {
+                    await tx.staff.updateMany({
+                        where: { nik: u.nik },
+                        data: {
+                            nama_lengkap: u.name,
+                            foto_profile: u.avatar
+                        }
+                    });
+                }
+            }
+        });
 
-        // Sync with staff table if nik exists
-        if (u.nik) {
-            const sqlStaff = `
-                UPDATE staff SET 
-                nama_lengkap = ?, foto_profile = ?
-                WHERE nik = ?
-            `;
-            await connection.query(sqlStaff, [u.name, u.avatar, u.nik]);
-        }
-
-        await connection.commit();
         cache.del('all_users');
         res.json({ message: 'User and Staff updated' });
     } catch (err) {
-        await connection.rollback();
         res.status(500).json({ error: err.message });
-    } finally {
-        connection.release();
     }
 });
 
 // DELETE USER
 router.delete('/:id', async (req, res) => {
     const { id } = req.params;
-    const connection = await db.getConnection();
     try {
-        await connection.beginTransaction();
+        await prisma.$transaction(async (tx) => {
+            const user = await tx.users.findUnique({
+                where: { id: id },
+                select: { nik: true }
+            });
 
-        // Get NIK before deleting user
-        const [userRows] = await connection.query('SELECT nik FROM users WHERE id = ?', [id]);
-        if (userRows.length > 0) {
-            const nik = userRows[0].nik;
-            if (nik) {
-                // Delete from staff table
-                await connection.query('DELETE FROM staff WHERE nik = ?', [nik]);
+            if (user && user.nik) {
+                await tx.staff.deleteMany({
+                    where: { nik: user.nik }
+                });
             }
-        }
 
-        // Delete from users table
-        await connection.query('DELETE FROM users WHERE id = ?', [id]);
+            await tx.users.delete({
+                where: { id: id }
+            });
+        });
 
-        await connection.commit();
         cache.del('all_users');
         res.json({ message: 'User and associated Staff deleted' });
     } catch (err) {
-        await connection.rollback();
         res.status(500).json({ error: err.message });
-    } finally {
-        connection.release();
     }
 });
 

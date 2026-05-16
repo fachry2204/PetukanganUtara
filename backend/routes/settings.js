@@ -1,18 +1,16 @@
-
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
+const prisma = require('../prisma');
 
 // Get current settings
 router.get('/', async (req, res) => {
     try {
-        const [rows] = await db.query('SELECT * FROM settings WHERE id = ?', ['app_settings']);
+        const rows = await prisma.$queryRawUnsafe('SELECT * FROM settings WHERE id = ?', 'app_settings');
         if (rows.length === 0) {
             return res.status(404).json({ error: 'Settings not found' });
         }
         
         const s = rows[0];
-        // Format to match frontend camelCase
         const settings = {
             systemName: s.system_name,
             subName: s.sub_name,
@@ -48,32 +46,19 @@ router.get('/', async (req, res) => {
 // Update settings
 router.post('/', async (req, res) => {
     const { 
-        systemName, 
-        subName, 
-        footerText, 
-        appVersion, 
-        themeColor, 
-        logo, 
-        loginBackground, 
-        anjunganBackground,
-        zonaList,
-        shiftConfig,
-        waGatewayConfig,
-        securityConfig
+        systemName, subName, footerText, appVersion, themeColor, logo, 
+        loginBackground, anjunganBackground, zonaList, shiftConfig, waGatewayConfig, securityConfig
     } = req.body;
     
     try {
         console.log('Incoming Settings Update Request...');
         
-        // 1. Fetch current settings first to merge (Avoid wiping fields not sent by frontend)
-        const [currentRows] = await db.query('SELECT * FROM settings WHERE id = ?', ['app_settings']);
+        const currentRows = await prisma.$queryRawUnsafe('SELECT * FROM settings WHERE id = ?', 'app_settings');
         if (currentRows.length === 0) {
             return res.status(404).json({ error: 'Settings row not found in DB' });
         }
         const current = currentRows[0];
 
-        // 2. Prepare merged data (Use incoming if present, otherwise keep current)
-        // Map camelCase from body to snake_case for DB
         const data = {
             system_name: systemName !== undefined ? systemName : current.system_name,
             sub_name: subName !== undefined ? subName : current.sub_name,
@@ -89,39 +74,19 @@ router.post('/', async (req, res) => {
             security_config: securityConfig !== undefined ? JSON.stringify(securityConfig) : current.security_config
         };
 
-        // 3. Execute Update
-        const [result] = await db.query(`
+        const result = await prisma.$executeRawUnsafe(`
             UPDATE settings SET 
-                system_name = ?, 
-                sub_name = ?, 
-                footer_text = ?, 
-                app_version = ?, 
-                theme_color = ?, 
-                logo = ?, 
-                login_background = ?, 
-                anjungan_background = ?,
-                zona_list = ?,
-                shift_config = ?,
-                wa_gateway_config = ?,
-                security_config = ?
+                system_name = ?, sub_name = ?, footer_text = ?, app_version = ?, theme_color = ?, 
+                logo = ?, login_background = ?, anjungan_background = ?, zona_list = ?,
+                shift_config = ?, wa_gateway_config = ?, security_config = ?
             WHERE id = ?
-        `, [
-            data.system_name, 
-            data.sub_name, 
-            data.footer_text, 
-            data.app_version, 
-            data.theme_color, 
-            data.logo, 
-            data.login_background, 
-            data.anjungan_background, 
-            data.zona_list,
-            data.shift_config,
-            data.wa_gateway_config,
-            data.security_config,
-            'app_settings'
-        ]);
+        `, 
+            data.system_name, data.sub_name, data.footer_text, data.app_version, data.theme_color, 
+            data.logo, data.login_background, data.anjungan_background, data.zona_list,
+            data.shift_config, data.wa_gateway_config, data.security_config, 'app_settings'
+        );
         
-        console.log('Update Success. Rows affected:', result.affectedRows);
+        console.log('Update Success. Rows affected:', result);
         res.json({ success: true, message: 'Settings updated successfully' });
     } catch (err) {
         console.error('Settings Update ERROR:', err);

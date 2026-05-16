@@ -1,9 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
+const prisma = require('../prisma');
 const NodeCache = require('node-cache');
 
-// StdTTL: 60 seconds. Caching reduces database load for heavy read requests.
 const cache = new NodeCache({ stdTTL: 60, checkperiod: 120 });
 
 // 1. GET ALL TUGAS PPSU
@@ -15,7 +14,7 @@ router.get('/', async (req, res) => {
         }
 
         const limit = Number(req.query.limit) || 100;
-        const [rows] = await db.query('SELECT * FROM tugas_ppsu ORDER BY timestamp DESC LIMIT ?', [limit]);
+        const rows = await prisma.$queryRawUnsafe('SELECT * FROM tugas_ppsu ORDER BY timestamp DESC LIMIT ?', limit);
         
         const tugas = rows.map(r => {
             const safeParse = (str) => {
@@ -35,7 +34,7 @@ router.get('/', async (req, res) => {
                 status: r.status,
                 timestamp: r.timestamp,
                 fotoSebelum: r.foto_sebelum,
-                fotoSedang: r.foto_sedang, // Added
+                fotoSedang: r.foto_sedang,
                 fotoSesudah: r.foto_sesudah,
                 priority: r.priority,
                 logs: safeParse(r.logs),
@@ -58,22 +57,19 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
     const t = req.body;
     try {
-        const sql = `
+        await prisma.$executeRawUnsafe(`
             INSERT INTO tugas_ppsu (id, judul_tugas, deskripsi, kategori, lokasi, latitude, longitude, status, timestamp, foto_sebelum, foto_sedang, foto_sesudah, priority, logs, reporter_name, reporter_nik)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `;
-        await db.query(sql, [
-            t.id, t.judulTugas, t.deskripsi, t.kategori, t.lokasi, t.latitude, t.longitude, t.status, t.timestamp, t.fotoSebelum, t.fotoSedang, t.fotoSesudah, t.priority, JSON.stringify(t.logs || []), t.reporterName, t.reporterNik
-        ]);
+        `, t.id, t.judulTugas, t.deskripsi, t.kategori, t.lokasi, t.latitude, t.longitude, t.status, t.timestamp ? new Date(t.timestamp) : null, t.fotoSebelum, t.fotoSedang, t.fotoSesudah, t.priority, JSON.stringify(t.logs || []), t.reporterName, t.reporterNik);
         
         // WA NOTIFICATION LOGIC
         try {
-            const [settingsRows] = await db.query('SELECT wa_gateway_config FROM settings WHERE id = "app_settings"');
+            const settingsRows = await prisma.$queryRawUnsafe('SELECT wa_gateway_config FROM settings WHERE id = "app_settings"');
             const config = JSON.parse(settingsRows[0]?.wa_gateway_config || '{}');
             
             if (config.enableTasks) {
                 const waService = require('../services/whatsappService');
-                const [staffRows] = await db.query('SELECT nomor_whatsapp FROM staff WHERE nik = ?', [t.reporterNik]);
+                const staffRows = await prisma.$queryRawUnsafe('SELECT nomor_whatsapp FROM staff WHERE nik = ?', t.reporterNik);
                 const staffPhone = staffRows[0]?.nomor_whatsapp;
 
                 if (staffPhone) {
@@ -90,7 +86,7 @@ router.post('/', async (req, res) => {
         }
 
         cache.del('all_tugas_ppsu');
-        res.status(201).json(t); // Return object directly
+        res.status(201).json(t);
     } catch (err) {
         console.error("POST tugas_ppsu error:", err);
         res.status(500).json({ error: err.message });
@@ -102,32 +98,28 @@ router.put('/:id', async (req, res) => {
     const { id } = req.params;
     const t = req.body;
     try {
-        const sql = `
+        await prisma.$executeRawUnsafe(`
             UPDATE tugas_ppsu SET 
             status = ?, logs = ?, foto_sebelum = ?, foto_sedang = ?, foto_sesudah = ?, 
             alasan_penolakan = ?, staff_id = ?, priority = ?
             WHERE id = ?
-        `;
-        await db.query(sql, [
-            t.status, JSON.stringify(t.logs || []), t.fotoSebelum, t.fotoSedang, t.fotoSesudah,
-            t.alasanPenolakan, t.staffId, t.priority, id
-        ]);
+        `, t.status, JSON.stringify(t.logs || []), t.fotoSebelum, t.fotoSedang, t.fotoSesudah,
+            t.alasanPenolakan, t.staffId, t.priority, id);
         
         // WA NOTIFICATION LOGIC FOR UPDATES
         try {
-            const [settingsRows] = await db.query('SELECT wa_gateway_config FROM settings WHERE id = "app_settings"');
+            const settingsRows = await prisma.$queryRawUnsafe('SELECT wa_gateway_config FROM settings WHERE id = "app_settings"');
             const config = JSON.parse(settingsRows[0]?.wa_gateway_config || '{}');
             
             if (config.enableTasks) {
                 const waService = require('../services/whatsappService');
-                const [staffRows] = await db.query('SELECT nomor_whatsapp FROM staff WHERE nik = ?', [t.reporterNik]);
+                const staffRows = await prisma.$queryRawUnsafe('SELECT nomor_whatsapp FROM staff WHERE nik = ?', t.reporterNik);
                 const staffPhone = staffRows[0]?.nomor_whatsapp;
 
                 if (staffPhone) {
                     let photoToSend = null;
                     let stageText = "Update";
 
-                    // Determine which photo is "newest" or most relevant for the update
                     if (t.fotoSesudah) {
                         photoToSend = t.fotoSesudah;
                         stageText = "Selesai Tugas (Setelah)";

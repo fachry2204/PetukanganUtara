@@ -9,7 +9,7 @@ try {
 }
 const qrcode = require('qrcode');
 const path = require('path');
-const db = require('../db');
+const prisma = require('../prisma');
 
 class WhatsAppService {
     constructor() {
@@ -23,13 +23,13 @@ class WhatsAppService {
     async logToDb(to, message, type, status, error = null) {
         try {
             const sql = 'INSERT INTO wa_logs (penerima, pesan, tipe, status, error_detail) VALUES (?, ?, ?, ?, ?)';
-            await db.query(sql, [
+            await prisma.$executeRawUnsafe(sql, 
                 to,
                 message.substring(0, 1000), // Limit message length in log
                 type,
                 status,
                 error
-            ]);
+            );
         } catch (err) {
             console.error('Failed to write WA log to DB:', err);
         }

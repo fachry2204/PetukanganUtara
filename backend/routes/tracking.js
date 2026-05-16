@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
+const prisma = require('../prisma');
 const webpush = require('web-push');
 
 // VAPID Configuration
@@ -17,12 +17,11 @@ webpush.setVapidDetails(
 router.post('/subscribe', async (req, res) => {
     const { userId, subscription } = req.body;
     try {
-        // Remove old subscription for this user if exists
-        await db.query('DELETE FROM push_subscriptions WHERE user_id = ?', [userId]);
-        // Insert new
-        await db.query('INSERT INTO push_subscriptions (user_id, subscription_data) VALUES (?, ?)', [
-            userId, JSON.stringify(subscription)
-        ]);
+        await prisma.$transaction(async (tx) => {
+            await tx.$executeRawUnsafe('DELETE FROM push_subscriptions WHERE user_id = ?', userId);
+            await tx.$executeRawUnsafe('INSERT INTO push_subscriptions (user_id, subscription_data) VALUES (?, ?)', 
+                userId, JSON.stringify(subscription));
+        });
         res.status(201).json({ message: 'Subscribed' });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -33,9 +32,8 @@ router.post('/subscribe', async (req, res) => {
 router.post('/location', async (req, res) => {
     const { userId, name, latitude, longitude } = req.body;
     try {
-        await db.query('INSERT INTO staff_locations (user_id, name, latitude, longitude) VALUES (?, ?, ?, ?)', [
-            userId, name, latitude, longitude
-        ]);
+        await prisma.$executeRawUnsafe('INSERT INTO staff_locations (user_id, name, latitude, longitude) VALUES (?, ?, ?, ?)', 
+            userId, name, latitude, longitude);
         res.json({ status: 'Location updated' });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -46,14 +44,13 @@ router.post('/location', async (req, res) => {
 router.post('/broadcast', async (req, res) => {
     const { title, message } = req.body;
     try {
-        const [subs] = await db.query('SELECT subscription_data FROM push_subscriptions');
+        const subs = await prisma.$queryRawUnsafe('SELECT subscription_data FROM push_subscriptions');
         const payload = JSON.stringify({ title, message });
 
         const promises = subs.map(s => {
             const subscription = JSON.parse(s.subscription_data);
             return webpush.sendNotification(subscription, payload).catch(e => {
                 console.error('Push Error:', e);
-                // If subscription expired/invalid, we could delete it from DB here
             });
         });
 
